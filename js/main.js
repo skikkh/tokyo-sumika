@@ -154,8 +154,8 @@ function renderDetail() {
   const grab = '<div class="dgrab" aria-hidden="true"></div>';
   if (st.sel != null) d.innerHTML = grab + UI.stationDetail(model, model.S[st.sel], st, R);
   else if (st.selMu != null) d.innerHTML = grab + UI.muniDetail(model, model.M[st.selMu], st);
-  else { d.hidden = true; return; }
-  d.hidden = false;
+  else { d.hidden = true; $('#app').classList.remove('detail-open'); return; }
+  d.hidden = false; $('#app').classList.add('detail-open');
 }
 function selectStation(sid, { fly = true } = {}) {
   if (sid == null) return;
@@ -173,7 +173,7 @@ function pickMuni(i) {
   apply(); renderDetail();
 }
 function closeDetail() {
-  st.sel = null; st.selMu = null; scene.select(null); const d = $('#detail'); d.hidden = true; d.classList.remove('full'); d.style.transform = '';
+  st.sel = null; st.selMu = null; scene.select(null); const d = $('#detail'); d.hidden = true; d.classList.remove('full'); d.style.transform = ''; $('#app').classList.remove('detail-open');
   apply();
 }
 function setLens(k) {
@@ -456,13 +456,17 @@ function initPanels() {
   };
   det.addEventListener('pointerup', dend); det.addEventListener('pointercancel', dend);
   // 画面サイズの変化
-  const relayout = () => { if (isMobile()) setSheet(ui.sheet, { animate: false }); else { $('#dock').style.height = ''; delete $('#dock').dataset.state; } };
+  const relayout = () => {
+    if (isMobile()) setSheet(ui.sheet, { animate: false }); else { $('#dock').style.height = ''; delete $('#dock').dataset.state; }
+    const app = $('#app'), tb = document.querySelector('.topbar');
+    app.style.setProperty('--tb', Math.round(tb.getBoundingClientRect().bottom - app.getBoundingClientRect().top) + 'px');
+  };
   window.addEventListener('resize', relayout); relayout();
 }
 
 function setMode(m) {
   st.mode = m;
-  if (m === 'muni') { st.sel = null; $('#detail').hidden = st.selMu == null; }
+  if (m === 'muni') { st.sel = null; $('#detail').hidden = st.selMu == null; $('#app').classList.toggle('detail-open', st.selMu != null); }
   apply();
   if (m === 'muni') { const v = scene.viewNow(); if (v.dist < 520) scene.flyTo({ dist: 620, polar: Math.min(v.polar, 0.9) }); }
 }

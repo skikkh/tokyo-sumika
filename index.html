@@ -394,9 +394,15 @@ kbd{font-family:var(--f-num);font-size:11px;font-weight:700;color:var(--ink-3);b
 .cp-t{display:flex;gap:6px;align-items:center;min-width:0;overflow:hidden;white-space:nowrap}
 .cp-chip{background:var(--accent-wash);color:var(--accent);border-radius:999px;padding:2px 8px;font-size:11.5px}
 .cp-ramp{width:44px;height:6px;border-radius:3px;flex:none;background:linear-gradient(90deg,var(--r1),var(--r4),var(--r7))}
-.compass svg{width:30px;height:30px}
-.compass svg{display:block}
-.compass.turned{border-color:var(--hair-2);background:var(--card)}
+/* 地図の右上に浮かぶ操作ボタン（コンパス） */
+.mapctl{position:absolute;right:16px;top:calc(var(--tb,64px) + 12px);z-index:8;display:flex;flex-direction:column;gap:8px;transition:right .3s cubic-bezier(.2,.8,.2,1)}
+.ctl{width:46px;height:46px;border-radius:999px;border:1px solid var(--hair);background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:var(--shadow);display:grid;place-items:center;color:var(--ink);padding:0;cursor:pointer}
+.ctl:hover{background:var(--card)}
+.ctl svg{display:block;width:36px;height:36px}
+.compass.turned{background:var(--card);border-color:var(--hair-2)}
+#app.detail-open .mapctl{right:calc(16px + 400px + 12px)}
+@media (max-width:1180px){#app.detail-open .mapctl{right:calc(16px + 360px + 12px)}}
+@media (max-width:760px){.mapctl{right:12px;top:calc(var(--tb,112px) + 10px)}#app.detail-open .mapctl{right:12px}.ctl{width:44px;height:44px}}
 @media (min-width:761px){
   #app.dock-off .dock{transform:translateX(calc(-100% - 32px));opacity:0;visibility:hidden;pointer-events:none;transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .2s ease,visibility 0s linear .3s}
   #app.dock-off .cond,#app.dock-off .cond-pill{left:16px}
@@ -501,13 +507,15 @@ kbd{font-family:var(--f-num);font-size:11px;font-weight:700;color:var(--ink-3);b
       <div class="seg card" role="group" aria-label="カメラ">
         <button id="c-3d" aria-pressed="true">立体</button><button id="c-top" aria-pressed="false">真上</button>
       </div>
-      <button class="ibtn compass" id="b-compass" type="button" title="北を上にする" aria-label="北を上にする（いまは北向き）">
-        <svg viewBox="0 0 40 40" aria-hidden="true"><g id="needle"><text x="20" y="8.6" text-anchor="middle" font-size="7.5" font-weight="700" font-family="Barlow, Arial, sans-serif" fill="currentColor">N</text><path d="M20 10.5L24.2 20h-8.4z" fill="#d8402b"/><path d="M20 29.5L24.2 20h-8.4z" fill="currentColor" opacity=".35"/><circle cx="20" cy="20" r="1.8" fill="var(--card)"/></g></svg>
-      </button>
       <button class="ibtn" id="b-terrain" aria-pressed="false" title="標高の色分け" aria-label="標高の色分けを切り替える"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19l6-9 4 5 3-4 5 8z"/><path d="M3 19h18"/></svg></button>
       <button class="ibtn" id="b-theme" title="表示テーマ" aria-label="ライトとダークを切り替える"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
     </div>
   </header>
+  <div class="mapctl" id="mapctl">
+    <button class="ctl compass" id="b-compass" type="button" title="北を上にする" aria-label="北を上にする（いまは北向き）">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><g id="needle"><text x="20" y="8.2" text-anchor="middle" font-size="7.5" font-weight="700" font-family="Barlow, Arial, sans-serif" fill="currentColor">N</text><path d="M20 10.2L24.6 20h-9.2z" fill="#d8402b"/><path d="M20 29.8L24.6 20h-9.2z" fill="currentColor" opacity=".32"/><circle cx="20" cy="20" r="1.9" fill="var(--card)"/></g></svg>
+    </button>
+  </div>
 
   <aside class="dock card" id="dock" aria-label="ランキング">
     <button class="grab mobile-only" id="grab" aria-label="パネルの高さを変える（上下にドラッグ）"></button>
