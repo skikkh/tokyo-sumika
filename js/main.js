@@ -24,7 +24,7 @@ async function boot() {
     const [g, d, gd] = await Promise.all([get('data/geo.json'), get('data/stations.json'), get('data/guide.json')]);
     geo = g; guide = gd; model = new Model(d);
     $('#st-n').textContent = model.T.length; $('#st-m').textContent = model.M.length;
-    scene = new MapScene($('#map'), $('#labels'), geo, model, { pickStation: sid => selectStation(sid), pickMuni, hover, userMove: () => closeSugg(), bearing: updateCompass });
+    scene = new MapScene($('#map'), $('#labels'), geo, model, { pickStation: sid => selectStation(sid), pickMuni: tapMuni, hover, userMove: () => closeSugg(), bearing: updateCompass });
     await scene.loadTextures('data/hillshade.png', 'data/elev.png');
     buildControls();
     initPanels();
@@ -155,6 +155,7 @@ function renderDetail() {
   if (st.sel != null) d.innerHTML = grab + UI.stationDetail(model, model.S[st.sel], st, R);
   else if (st.selMu != null) d.innerHTML = grab + UI.muniDetail(model, model.M[st.selMu], st);
   else { d.hidden = true; $('#app').classList.remove('detail-open'); return; }
+  d.classList.toggle('mu', st.sel == null);
   d.hidden = false; $('#app').classList.add('detail-open');
 }
 function selectStation(sid, { fly = true } = {}) {
@@ -169,6 +170,7 @@ function selectStation(sid, { fly = true } = {}) {
 }
 function pickMuni(i) {
   if (i == null) { closeDetail(); return; }
+  if (isMobile()) { setSheet('peek'); $('#q').blur(); }
   st.selMu = i; st.sel = null; scene.select(null);
   apply(); renderDetail();
 }
@@ -182,7 +184,33 @@ function setLens(k) {
 function setMuScope(i, fly = true) {
   st.mu = i; st.listN = 60;
   if (i != null) { const m = model.M[i]; if (st.area === '23' && !m.ward || st.area === 'tama' && m.ward) st.area = 'all'; }
-  apply(); if (fly && i != null) scene.flyToMuni(i);
+  apply(); if (fly && i != null) frameMuni(i);
+}
+// 地図のうち、パネルに隠れていない範囲（地図要素の座標）
+function mapRect() {
+  const m = $('#map').getBoundingClientRect(); const W = m.width, H = m.height;
+  let l = 0, t = 0, r = W, b = H;
+  const tb = document.querySelector('.topbar')?.getBoundingClientRect(); if (tb) t = Math.max(t, tb.bottom - m.top + 8);
+  const det = $('#detail'), open = !det.hidden;
+  if (isMobile()) {
+    if (open) b = det.classList.contains('full') ? H : H * (1 - (det.classList.contains('mu') ? 0.44 : 0.64));
+    else { const dk = $('#dock').getBoundingClientRect(); if (dk.height) b = Math.min(b, dk.top - m.top); }
+  } else {
+    const dk = $('#dock').getBoundingClientRect(); if (!ui.dockOff && dk.width) l = Math.max(l, dk.right - m.left + 8);
+    if (open) r = Math.min(r, det.getBoundingClientRect().left - m.left - 8);
+    const cd = $('#cond').getBoundingClientRect(); if (cd.height && cd.top - m.top > H * 0.5) b = Math.min(b, cd.top - m.top - 8);
+  }
+  if (r - l < 200) { l = 0; r = W; }
+  if (b - t < 140) { t = 0; b = H; }
+  return { l, t, r, b };
+}
+// 区全体が見えるようにカメラを合わせる
+function frameMuni(i) { if (i != null) scene.fitMuni(i, mapRect()); }
+// 地図で区をタップしたとき。スマホでは、タップした場所が下のシートに隠れるなら上へずらす
+function tapMuni(i, x, y) {
+  pickMuni(i);
+  if (i == null || !isMobile() || y == null) return;
+  const R = mapRect(); if (y > R.b - 24) scene.panScreen(x, y, (R.l + R.r) / 2, (R.t + R.b) / 2);
 }
 function setLineScope(li, fly = true) {
   st.line = li; st.listN = 60; apply(); if (fly && li != null) scene.flyToLine(li);
@@ -293,7 +321,7 @@ function buildControls() {
     onPick: r => {
       q.value = '';
       if (r.type === 'st') selectStation(r.s.i);
-      else if (r.type === 'mu') { setMuScope(r.m.i); pickMuni(r.m.i); }
+      else if (r.type === 'mu') { pickMuni(r.m.i); setMuScope(r.m.i); }
       else setLineScope(r.L.i);
     }
   }));
@@ -503,7 +531,7 @@ function onClick(e) {
   const sidEl = t.closest('[data-sid]');
   if (sidEl && !t.closest('[data-act]')) { const sid = +sidEl.dataset.sid; const sh = t.closest('.sheet'); if (sh) sh.hidden = true; selectStation(sid); return; }
   const mu = t.closest('[data-mu]');
-  if (mu) { const i = +mu.dataset.mu; if (st.mode === 'muni') { pickMuni(i); scene.flyToMuni(i); } else { pickMuni(i); scene.flyToMuni(i); } return; }
+  if (mu) { const i = +mu.dataset.mu; pickMuni(i); frameMuni(i); return; }
   const shiki = t.closest('[data-shiki]'), rei = t.closest('[data-rei]');
   if (shiki || rei) { const attr = shiki ? 'data-shiki' : 'data-rei'; $$(`#calc [${attr}]`).forEach(b => b.setAttribute('aria-pressed', String(b === (shiki || rei)))); updateCalc(); return; }
 }

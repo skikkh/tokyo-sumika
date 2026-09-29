@@ -270,11 +270,11 @@ diffuseColor.rgb = mix(uPaper, diffuseColor.rgb, fe);` : ''}`);
       g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 2000);
       return g;
     };
-    this.ru = { uWpp: { value: 0.001 }, uWidth: { value: 3.2 }, uLanePx: { value: 3.6 }, uMinW: { value: 0.09 }, uSel: { value: -1 }, uCasing: { value: 0 }, uPaper: { value: new THREE.Color() }, uCase: { value: new THREE.Color() }, uDimK: { value: 0.78 }, uHiW: { value: 2.0 }, uCtx: { value: 0 }, uMuH: { value: this.muLift = new Float32Array(64) } };
+    this.ru = { uWpp: { value: 0.001 }, uWidth: { value: 3.2 }, uLanePx: { value: 3.6 }, uMinW: { value: 0.09 }, uSel: { value: -1 }, uCasing: { value: 0 }, uPaper: { value: new THREE.Color() }, uCase: { value: new THREE.Color() }, uDimK: { value: 0.78 }, uHiW: { value: 2.0 }, uCtx: { value: 0 }, uMuH: { value: this.muLift = new Float32Array(64) }, uFocusMu: { value: -1 }, uOutK: { value: 0.42 } };
     const vs = `attribute vec2 aN; attribute float aSide; attribute float aLane; attribute vec3 aColor; attribute float aLine; attribute float aMu;
 uniform float uWpp; uniform float uWidth; uniform float uLanePx; uniform float uMinW; uniform float uSel; uniform float uCasing; uniform float uHiW;
-uniform float uMuH[64];
-varying vec3 vColor; varying float vKeep;
+uniform float uMuH[64]; uniform float uFocusMu;
+varying vec3 vColor; varying float vKeep; varying float vOut;
 #include <fog_pars_vertex>
 void main(){
   vec4 mv0 = modelViewMatrix * vec4(position, 1.0);
@@ -289,16 +289,18 @@ void main(){
   int mi = int(aMu + 0.5) - 1;
   if (mi >= 0 && mi < 64) p.y += uMuH[mi];   // 区市町村の立体の上に載せる
   vColor = aColor; vKeep = keep;
+  vOut = (uFocusMu > -0.5 && abs(aMu - 1.0 - uFocusMu) > 0.5) ? 1.0 : 0.0;   // 絞り込んだ区の外
   vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mvPosition;
   #include <fog_vertex>
 }`;
-    const fs = `uniform vec3 uPaper; uniform vec3 uCase; uniform float uCasing; uniform float uDimK;
-varying vec3 vColor; varying float vKeep;
+    const fs = `uniform vec3 uPaper; uniform vec3 uCase; uniform float uCasing; uniform float uDimK; uniform float uOutK;
+varying vec3 vColor; varying float vKeep; varying float vOut;
 #include <fog_pars_fragment>
 void main(){
   vec3 c = uCasing > 0.5 ? uCase : vColor;
   if (vKeep < 0.5) c = mix(c, uPaper, uDimK);
+  c = mix(c, uPaper, uOutK * vOut);
   gl_FragColor = vec4(c, 1.0);
   #include <colorspace_fragment>
   #include <fog_fragment>
@@ -386,8 +388,8 @@ void main(){
     }
     ctx.clearRect(0, 0, W, H); ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.lineJoin = 'round';
     const halo = (text, x, y, font, fill, lw) => { ctx.font = font; ctx.strokeStyle = this.muHalo; ctx.lineWidth = lw; ctx.strokeText(text, x, y); ctx.fillStyle = fill; ctx.fillText(text, x, y); };
-    halo(L.yomi, W / 2, pad, `700 ${rs}px "BIZ UDPGothic",sans-serif`, this.muInk2, 6);
-    halo(L.name, W / 2, pad + rs + 2, f, this.muInk, 10);
+    halo(L.yomi, W / 2, pad, `700 ${rs}px "BIZ UDPGothic",sans-serif`, L.sel ? this.muSel : this.muInk2, 6);
+    halo(L.name, W / 2, pad + rs + 2, f, L.sel ? this.muSel : this.muInk, 10);
     if (L.value) halo(L.value, W / 2, pad + rs + fs + 6, `700 ${Math.round(fs * 0.62)}px "Barlow","BIZ UDPGothic",sans-serif`, this.muInk, 8);
     L.tex.needsUpdate = true;
     const s = Math.min(9, Math.max(3.2, L.r * 0.55)) / fs;   // 1px あたりの単位
@@ -463,6 +465,8 @@ void main(){
   }
   setTop(on) { this.top = on; const v = this.viewNow(); this.flyTo({ polar: on ? 0.02 : 0.92, dist: v.dist }); }
   northUp() { this.flyTo({ az: 0 }, 700); }
+  // 画面上の点 (x0,y0) の地面が (x1,y1) に来るように平行移動
+  panScreen(x0, y0, x1, y1) { const a = this.groundAt(x0, y0), b = this.groundAt(x1, y1); if (!a || !b) return; const v = this.viewNow(); this.flyTo({ tx: v.tx + (a.x - b.x), tz: v.tz + (a.z - b.z) }, 650); }
 
   // ---------- テーマ ----------
   applyTheme() {
@@ -492,8 +496,10 @@ void main(){
     this.pillarMat.emissive.set(dark ? 0x16233c : 0x000000);
     this.ramp = ['--r0', '--r1', '--r2', '--r3', '--r4', '--r5', '--r6', '--r7'].map(col);
     this.stub = col('--land-side'); this.accent = col('--accent');
-    this.muInk = css('--ink-2'); this.muInk2 = css('--ink-3'); this.muHalo = css('--land');
+    this.muInk = css('--ink-2'); this.muInk2 = css('--ink-3'); this.muHalo = css('--land'); this.muSel = css('--accent');
     for (const L of this.muLabels) this.drawMuniLabel(L);
+    this.outlineCase = dark ? paper.clone() : new THREE.Color(0xffffff);
+    this.applyMaskTheme();
     if (this.outlineFor != null) this.setOutline(this.outlineFor, true);
     this.dirty = true;
   }
@@ -537,34 +543,43 @@ void main(){
     this.dirty = true;
   }
   setMuniFocus(mi, mode, values) {
-    const tmp = new THREE.Color();
+    const tmp = new THREE.Color(); const paper = this.u.uPaper.value;
+    this.focusMu = mi; this.focusMode = mode;
     this.muniMeshes.forEach((m, i) => {
       if (mode === 'muni' && values) {
         const v = values[i];
         m.th = v == null ? 1 : 1.5 + v.t * 22;
-        this.rampColor(v == null ? 0 : v.t, tmp); m.cap.color.copy(tmp);
+        this.rampColor(v == null ? 0 : v.t, tmp);
+        if (mi != null && mi !== i) tmp.lerp(paper, this.dark ? 0.6 : 0.62);   // 選んだ区以外は淡く
+        m.cap.color.copy(tmp);
         this.muLabels[i].value = v?.label || '';
       } else {
         m.th = 1;
         m.cap.color.copy(this.landCol);
-        if (mi != null && mi !== i) m.cap.color.lerp(this.u.uPaper.value, 0.3);
-        if (mi === i) m.cap.color.lerp(this.accent, this.dark ? 0.12 : 0.05);
+        if (mi === i && this.dark) m.cap.color.lerp(this.accent, 0.16);   // 暗い地図では区の中を少し明るく
         this.muLabels[i].value = '';
       }
       m.mesh.userData.border.material = this.borderMat;
     });
-    for (const L of this.muLabels) { if (L.value !== L.drawn) { L.drawn = L.value; this.drawMuniLabel(L); } }
-    this.setOutline(mode === 'muni' ? null : mi);
+    this.muLabels.forEach((L, i) => {
+      const sel = mi === i && mode !== 'muni';   // 区市で見るときは塗り色の上なので通常色のまま
+      if (L.value !== L.drawn || sel !== L.sel) { L.drawn = L.value; L.sel = sel; this.drawMuniLabel(L); }
+    });
+    this.ribUniform('uFocusMu', mode === 'muni' || mi == null ? -1 : mi);
+    this.setOutline(mi);
+    this.setMask(mode === 'muni' ? null : mi);
     this.dirty = true;
   }
-  // 選んだ区市町村の輪郭（画面上の太さが一定の線）。路線より下、公園・川より上に描く
+  // 選んだ区市町村の輪郭（画面上の太さが一定の線＋縁取り）。区市で見るときは立体の上に載せる
   setOutline(mi, force = false) {
     if (!force && this.outlineFor === mi) return;
     this.outlineFor = mi;
-    if (this.outline) { this.scene.remove(this.outline); this.outline.geometry.dispose(); this.outline = null; }
+    for (const o of this.outlines || []) { this.scene.remove(o); }
+    if (this.outlineGeo) { this.outlineGeo.dispose(); this.outlineGeo = null; }
+    this.outlines = [];
     if (mi == null) return;
-    const pos = [], nrm = [], side = [], lane = [], color = [], line = [], idx = []; let base = 0;
-    const c = this.accent; const y = SLAB + 0.05;
+    const pos = [], nrm = [], side = [], lane = [], color = [], line = [], mu = [], idx = []; let base = 0;
+    const c = this.accent; const y = SLAB + 0.055;
     for (const poly of this.geo.munis[mi].polys) {
       for (const ring of poly) {
         const r = dec(ring); const pts = [];
@@ -579,15 +594,14 @@ void main(){
           const la = Math.hypot(ax, az) || 1, lb = Math.hypot(bx, bz) || 1; ax /= la; az /= la; bx /= lb; bz /= lb;
           let tx = ax + bx, tz = az + bz; const lt = Math.hypot(tx, tz) || 1; tx /= lt; tz /= lt;
           let nx = -tz, nz = tx; const mit = 1 / Math.max(0.45, Math.abs(nx * (-az) + nz * ax)); nx *= mit; nz *= mit;
-          for (const sd of [-1, 1]) { pos.push(x, y, z); nrm.push(nx, nz); side.push(sd); lane.push(0); color.push(c.r, c.g, c.b); line.push(-5); }
+          for (const sd of [-1, 1]) { pos.push(x, y, z); nrm.push(nx, nz); side.push(sd); lane.push(0); color.push(c.r, c.g, c.b); line.push(-5); mu.push(mi + 1); }
           if (i < n - 1) { const a = base + i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
         }
         base += n * 2;
       }
     }
-    const mu0 = new Float32Array(pos.length / 3);
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('aMu', new THREE.BufferAttribute(mu0, 1));
+    const g = this.outlineGeo = new THREE.BufferGeometry();
+    g.setAttribute('aMu', new THREE.Float32BufferAttribute(mu, 1));
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('aN', new THREE.Float32BufferAttribute(nrm, 2));
     g.setAttribute('aSide', new THREE.Float32BufferAttribute(side, 1));
@@ -595,14 +609,67 @@ void main(){
     g.setAttribute('aColor', new THREE.Float32BufferAttribute(color, 3));
     g.setAttribute('aLine', new THREE.Float32BufferAttribute(line, 1));
     g.setIndex(idx);
-    if (!this.outlineMat) {
-      this.outlineMat = new THREE.ShaderMaterial({
-        uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uWpp: { value: 0.001 }, uWidth: { value: 3.4 }, uLanePx: { value: 0 }, uMinW: { value: 0.03 }, uSel: { value: -1 }, uCasing: { value: 0 }, uPaper: { value: new THREE.Color() }, uCase: { value: new THREE.Color() }, uDimK: { value: 0 }, uHiW: { value: 1 }, uMuH: { value: new Float32Array(64) } }]),
+    if (!this.outlineMats) {
+      const mk = (casing) => new THREE.ShaderMaterial({
+        uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uWpp: { value: 0.001 }, uWidth: { value: 4.2 }, uLanePx: { value: 0 }, uMinW: { value: 0.03 }, uSel: { value: -1 }, uCasing: { value: casing }, uPaper: { value: new THREE.Color() }, uCase: { value: new THREE.Color() }, uDimK: { value: 0 }, uHiW: { value: 1 }, uFocusMu: { value: -1 }, uOutK: { value: 0 } }]),
         vertexShader: this.ribVS, fragmentShader: this.ribFS, fog: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -5,
       });
+      this.outlineMats = [mk(1), mk(0)];
+      for (const m of this.outlineMats) m.uniforms.uMuH = { value: this.muLift };   // 区市で見るときの高さを共有
     }
-    const o = this.outline = new THREE.Mesh(g, this.outlineMat); o.renderOrder = 3; o.frustumCulled = false;
-    this.scene.add(o);
+    this.outlineMats[0].uniforms.uCase.value.copy(this.outlineCase || this.u.uPaper.value);
+    for (const m of this.outlineMats) { const o = new THREE.Mesh(g, m); o.renderOrder = 3; o.frustumCulled = false; this.scene.add(o); this.outlines.push(o); }
+  }
+  // 絞り込んだ区の外側にかける薄い幕（区の中だけが明るく見える）
+  setMask(mi) {
+    if (this.maskFor === mi && this.mask) { this.mask.visible = mi != null; return; }
+    this.maskFor = mi;
+    if (this.mask) { this.scene.remove(this.mask); this.mask.geometry.dispose(); this.mask = null; }
+    if (mi == null) return;
+    const E = 4000; const sh = new THREE.Shape();
+    sh.moveTo(-E, -E); sh.lineTo(E, -E); sh.lineTo(E, E); sh.lineTo(-E, E); sh.lineTo(-E, -E);
+    for (const poly of this.geo.munis[mi].polys) {
+      const r = dec(poly[0]); const h = new THREE.Path();
+      for (let i = 0; i < r.length; i += 2) (i ? h.lineTo(r[i], -r[i + 1]) : h.moveTo(r[i], -r[i + 1]));
+      sh.holes.push(h);
+    }
+    const g = new THREE.ShapeGeometry(sh, 1); g.rotateX(-Math.PI / 2);
+    if (!this.maskMat) this.maskMat = new THREE.MeshBasicMaterial({ color: 0xd8dcd3, transparent: true, opacity: 0.55, depthWrite: false, fog: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
+    this.applyMaskTheme();
+    const m = this.mask = new THREE.Mesh(g, this.maskMat); m.position.y = SLAB + 0.045; m.renderOrder = 2; m.frustumCulled = false;
+    this.scene.add(m);
+  }
+  applyMaskTheme() {
+    if (!this.maskMat) return;
+    this.maskMat.color.copy(col('--mask')); this.maskMat.opacity = this.dark ? 0.6 : 0.68;
+  }
+  // 区全体が、パネルに隠れない画面の範囲 rect {l,t,r,b} に収まるようにカメラを動かす
+  fitMuni(i, rect) {
+    const W = this.el.clientWidth, H = this.el.clientHeight; if (!W || !H) return this.flyToMuni(i);
+    const R = rect || { l: 0, t: 0, r: W, b: H };
+    const pad = Math.min(36, (R.r - R.l) * 0.06), rw = Math.max(60, R.r - R.l - pad * 2), rh = Math.max(60, R.b - R.t - pad * 2);
+    const pts = [];
+    for (const poly of this.geo.munis[i].polys) { const r = dec(poly[0]); const st = Math.max(2, Math.floor(r.length / 240) * 2); for (let k = 0; k < r.length; k += st) pts.push([r[k], r[k + 1]]); }
+    if (!pts.length) return this.flyToMuni(i);
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const [x, z] of pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    const v0 = this.viewNow(); const polar = this.top ? 0.02 : Math.min(v0.polar, 0.95);
+    let v = { tx: cx, tz: cz, dist: Math.max(60, Math.hypot(x1 - x0, z1 - z0) * 1.6), polar, az: v0.az };
+    const p = new THREE.Vector3();
+    for (let k = 0; k < 5; k++) {
+      this.setView(v); this.camera.updateMatrixWorld();
+      const g = this.groundAt((R.l + R.r) / 2, (R.t + R.b) / 2);
+      if (g) { v = { ...v, tx: v.tx + (cx - g.x), tz: v.tz + (cz - g.z) }; this.setView(v); this.camera.updateMatrixWorld(); }
+      let a = Infinity, b = -Infinity, c = Infinity, d = -Infinity;
+      for (const [x, z] of pts) { p.set(x, SLAB, z).project(this.camera); const px = (p.x + 1) / 2 * W, py = (1 - p.y) / 2 * H; a = Math.min(a, px); b = Math.max(b, px); c = Math.min(c, py); d = Math.max(d, py); }
+      const f = Math.max((b - a) / rw, (d - c) / rh);
+      if (!isFinite(f) || f <= 0) break;
+      if (Math.abs(f - 1) < 0.05) break;
+      v = { ...v, dist: Math.min(1500, Math.max(40, v.dist * f)) };
+    }
+    this.setView(v0); this.camera.updateMatrixWorld();
+    this.flyTo(v);
   }
   select(sid) {
     const i = sid == null ? null : this.stIndex.get(sid);
@@ -638,7 +705,7 @@ void main(){
       const i = this.opts?.mode === 'muni' ? null : this.pick(x, y, e.pointerType === 'touch' ? 26 : 16);
       if (i != null) { this.cb.pickStation?.(this.st[i].i); return; }
       const mu = this.pickMuni(x, y);
-      this.cb.pickMuni?.(mu);
+      this.cb.pickMuni?.(mu, x, y);
     });
   }
 
@@ -801,7 +868,7 @@ void main(){
     // 画面上のサイズ換算
     const wpp = 2 * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) / Math.max(1, this.el.clientHeight);
     this.ribUniform('uWpp', wpp);
-    if (this.outlineMat) this.outlineMat.uniforms.uWpp.value = wpp;
+    for (const m of this.outlineMats || []) m.uniforms.uWpp.value = wpp;
     const wppT = wpp * dist;
     const rad = Math.min(1.25, Math.max(0.18, 2.7 * wppT));
     this.hMax = Math.min(46, Math.max(2.8, dist * 0.1));
@@ -826,9 +893,10 @@ void main(){
     this.muniMeshes.forEach((m, i) => { m.mesh.scale.y = m.h; if (i < 64) this.muLift[i] = SLAB * (m.h - 1); });
     for (let i = 0; i < this.muLabels.length; i++) {
       const L = this.muLabels[i]; const mh = this.muniMeshes[i].h;
-      L.mesh.position.y = SLAB * mh + (this.opts?.mode === 'muni' ? 0.4 : 0.03);
+      L.mesh.position.y = SLAB * mh + (this.opts?.mode === 'muni' ? 0.4 : 0.07);
       const vis = this.opts?.mode === 'muni' ? 1 : THREE.MathUtils.smoothstep(dist, 40, 120) * (1 - THREE.MathUtils.smoothstep(dist, 900, 1300));
-      L.mat.opacity = vis * (this.opts?.mode === 'muni' ? 0.95 : 0.8); L.mesh.visible = vis > 0.02;
+      const dim = this.focusMu != null && this.focusMu !== i ? 0.5 : 1;   // 選んだ区以外の名前は控えめに
+      L.mat.opacity = vis * (this.opts?.mode === 'muni' ? 0.95 : 0.8) * dim; L.mesh.visible = vis > 0.02;
       const k = this.opts?.mode === 'muni' ? Math.min(1.15, Math.max(0.6, dist / 560)) : Math.min(1, Math.max(0.3, dist / 260));
       if (L.baseScale) L.mesh.scale.set(L.tex.image.width * L.baseScale * k, 1, L.tex.image.height * L.baseScale * k);
     }

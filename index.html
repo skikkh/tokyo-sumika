@@ -30,7 +30,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Barlow:wght@500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap">
 <style>
 :root{
-  --paper:#ECEFEA; --paper-2:#E2E6DF; --land:#FBFBF7; --land-ctx:#F0F1EB; --land-side:#D3D8CE;
+  --paper:#ECEFEA; --paper-2:#E2E6DF; --land:#FBFBF7; --land-ctx:#F0F1EB; --land-side:#D3D8CE; --mask:#CDD2C8;
   --water:#C6D5DB; --water-line:#9FBAC5; --park:#D0E2C2; --road:#D5D7CF; --road-major:#BCC0B6; --border:#B4B9AE;
   --ink:#15191B; --ink-2:#465056; --ink-3:#7C868B; --hair:rgba(21,25,27,.10); --hair-2:rgba(21,25,27,.16);
   --card:#FFFFFF; --glass:rgba(255,255,255,.90); --chip:#F0F2EE; --chip-hover:#E5E9E3;
@@ -49,7 +49,7 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     color-scheme:dark;
-    --paper:#0E1316; --paper-2:#141A1E; --land:#1C2328; --land-ctx:#161C20; --land-side:#0A0E10;
+    --paper:#0E1316; --paper-2:#141A1E; --land:#1C2328; --land-ctx:#161C20; --land-side:#0A0E10; --mask:#05080A;
     --water:#0B161C; --water-line:#24404D; --park:#1B2B21; --road:#29323A; --road-major:#3A4650; --border:#3A454C;
     --ink:#EEF2F3; --ink-2:#B3BDC2; --ink-3:#7E888E; --hair:rgba(238,242,243,.10); --hair-2:rgba(238,242,243,.18);
     --card:#192025; --glass:rgba(23,30,35,.90); --chip:#222A30; --chip-hover:#2B343B;
@@ -63,7 +63,7 @@
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --paper:#0E1316; --paper-2:#141A1E; --land:#1C2328; --land-ctx:#161C20; --land-side:#0A0E10;
+  --paper:#0E1316; --paper-2:#141A1E; --land:#1C2328; --land-ctx:#161C20; --land-side:#0A0E10; --mask:#05080A;
   --water:#0B161C; --water-line:#24404D; --park:#1B2B21; --road:#29323A; --road-major:#3A4650; --border:#3A454C;
   --ink:#EEF2F3; --ink-2:#B3BDC2; --ink-3:#7E888E; --hair:rgba(238,242,243,.10); --hair-2:rgba(238,242,243,.18);
   --card:#192025; --glass:rgba(23,30,35,.90); --chip:#222A30; --chip-hover:#2B343B;
@@ -478,6 +478,7 @@ kbd{font-family:var(--f-num);font-size:11px;font-weight:700;color:var(--ink-3);b
   .mtoggles .seg{display:flex;padding:3px;border-radius:999px;border:1px solid var(--hair);background:var(--chip)}
   .cond{display:none}
   .detail{left:0;right:0;width:auto;top:auto;bottom:0;height:64%;border-radius:20px 20px 0 0;z-index:14;transition:height .3s cubic-bezier(.2,.8,.2,1),transform .3s cubic-bezier(.2,.8,.2,1)}
+  .detail.mu{height:44%}
   .detail.full{height:calc(100% - 12px - env(safe-area-inset-top,0px))}
   .dgrab{display:block;height:24px;flex:none;position:relative;touch-action:none;cursor:grab}
   .dgrab::before{content:"";position:absolute;left:50%;top:9px;width:42px;height:5px;margin-left:-21px;border-radius:5px;background:var(--hair-2)}
