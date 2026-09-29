@@ -1,4 +1,4 @@
-import { Model, KEYS, LENSES, LENS, PERSONAS, esc, ruby, f1 } from './model.js';
+import { Model, KEYS, LENSES, LENS, PERSONAS, esc, ruby, f1, REGIONS, REG_NAME } from './model.js';
 import { MapScene } from './scene.js';
 import * as UI from './ui.js';
 
@@ -25,7 +25,7 @@ async function boot() {
     geo = g; guide = gd; model = new Model(d);
     $('#st-n').textContent = model.T.length; $('#st-m').textContent = model.M.length;
     scene = new MapScene($('#map'), $('#labels'), geo, model, { pickStation: sid => selectStation(sid), pickMuni: tapMuni, hover, userMove: () => closeSugg(), bearing: updateCompass });
-    await scene.loadTextures('data/hillshade.png', 'data/elev.png');
+    await scene.loadTextures('data/hillshade.jpg', 'data/elev.png');
     buildControls();
     initPanels();
     apply();
@@ -59,7 +59,7 @@ function labelFn(s) {
 }
 function muniValues() {
   const k = st.lens; const out = [];
-  const inArea = m => st.area === 'all' || (st.area === '23' ? m.ward : !m.ward);
+  const inArea = m => st.area === 'all' || m.reg === st.area;
   const avg = (m, f) => { const xs = m.stations.map(f).filter(v => v != null && isFinite(v)); return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null; };
   for (const m of model.M) {
     if (!inArea(m)) { out.push(null); continue; }
@@ -126,7 +126,7 @@ function renderLegend() {
   } else {
     t.innerHTML = `${st.mode === 'muni' ? '区市町村の高さと色' : '柱の高さと色'} = <b>${esc(lensName())}</b>`;
     $('.c-legend .ramp').style.background = '';
-    $('.c-legend .ramp-ax').innerHTML = st.lens === 'total' || st.mode === 'muni' ? '<span>低い</span><span>高い</span>' : '<span>都内で下位</span><span>上位</span>';
+    $('.c-legend .ramp-ax').innerHTML = st.lens === 'total' || st.mode === 'muni' ? '<span>低い</span><span>高い</span>' : '<span>下位</span><span>上位</span>';
   }
 }
 function syncControls() {
@@ -183,7 +183,7 @@ function setLens(k) {
 }
 function setMuScope(i, fly = true) {
   st.mu = i; st.listN = 60;
-  if (i != null) { const m = model.M[i]; if (st.area === '23' && !m.ward || st.area === 'tama' && m.ward) st.area = 'all'; }
+  if (i != null) { const m = model.M[i]; if (st.area !== 'all' && m.reg !== st.area) st.area = 'all'; }
   apply(); if (fly && i != null) frameMuni(i);
 }
 // 地図のうち、パネルに隠れていない範囲（地図要素の座標）
@@ -248,7 +248,7 @@ function openSheet(id) {
 }
 function closeSheet(id) { $('#' + id).hidden = true; }
 function boardFilters() {
-  const area = [['all', '東京都全域'], ['23', '23区'], ['tama', '多摩']].map(([k, n]) => `<button class="pill" data-area="${k}" aria-pressed="${st.area === k}">${n}</button>`).join('');
+  const area = REGIONS.map(([k, n]) => `<button class="pill" data-area="${k}" aria-pressed="${st.area === k}">${n}</button>`).join('');
   return `<span class="lab">範囲</span>${area}<div class="sel-wrap"><select data-bsel="mu" aria-label="区市町村">${muOptions()}</select></div><div class="sel-wrap"><select data-bsel="line" aria-label="路線">${lineOptions()}</select></div>
     ${st.rentMax != null ? `<span class="scope-tag">家賃 ${f1(st.rentMax)}万円まで</span>` : ''}${st.dest != null ? `<span class="scope-tag">${esc(model.S[st.dest].n)}まで${st.comMax ? st.comMax + '分以内' : ''}</span>` : ''}`;
 }
@@ -293,9 +293,11 @@ function closeSugg() { $('#q-sugg').hidden = true; $('#f-dest-sugg').hidden = tr
 
 // ---------- 操作の組み立て ----------
 function muOptions() {
-  const w = model.M.filter(m => m.ward), t = model.M.filter(m => !m.ward && m.stations.length);
   const o = m => `<option value="${m.i}">${esc(m.n)}（${m.stations.length}駅）</option>`;
-  return `<option value="">区市町村で絞る</option><optgroup label="東京23区">${w.map(o).join('')}</optgroup><optgroup label="多摩地域">${t.map(o).join('')}</optgroup>`;
+  return `<option value="">区市町村で絞る</option>` + REGIONS.filter(([k]) => k !== 'all').map(([k]) => {
+    const ms = model.M.filter(m => m.reg === k && m.stations.length);
+    return ms.length ? `<optgroup label="${REG_NAME[k]}">${ms.map(o).join('')}</optgroup>` : '';
+  }).join('');
 }
 function lineOptions() {
   const groups = [['jr', 'JR'], ['metro', '東京メトロ'], ['toei', '都営'], ['private', '私鉄・その他']];
@@ -523,7 +525,7 @@ function onClick(e) {
   const srt = t.closest('[data-sort]');
   if (srt) { const k = srt.dataset.sort; if (st.boardSort === k) st.boardAsc = !st.boardAsc; else { st.boardSort = k; st.boardAsc = k === 'name'; } renderBoard(); return; }
   const ar = t.closest('[data-area]');
-  if (ar) { st.area = ar.dataset.area; if (st.mu != null) { const m = model.M[st.mu]; if (st.area === '23' && !m.ward || st.area === 'tama' && m.ward) st.mu = null; } st.listN = 60; apply(); return; }
+  if (ar) { st.area = ar.dataset.area; if (st.mu != null) { const m = model.M[st.mu]; if (st.area !== 'all' && m.reg !== st.area) st.mu = null; } st.listN = 60; apply(); return; }
   const lens = t.closest('[data-lens]');
   if (lens && !lens.closest('#lens')) { setLens(lens.dataset.lens); if (lens.closest('#board')) closeSheet('board'); return; }
   const line = t.closest('[data-line]');

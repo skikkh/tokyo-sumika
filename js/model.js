@@ -29,6 +29,9 @@ export const PERSONAS = [
 
 export const POI_KEYS = ['super', 'conv', 'drug', 'rest', 'cafe', 'bar', 'med', 'child', 'school', 'lib', 'bath'];
 export const HUB_NAMES = ['東京', '大手町', '新宿', '渋谷', '池袋', '品川'];
+// 地域（絞り込みの単位）
+export const REGIONS = [['all', '全域'], ['23', '23区'], ['tama', '多摩'], ['14', '神奈川'], ['11', '埼玉'], ['12', '千葉']];
+export const REG_NAME = { '23': '東京23区', tama: '東京都・多摩地域', '14': '神奈川県', '11': '埼玉県', '12': '千葉県' };
 
 // ---------- 文字列 ----------
 export function esc(s) {
@@ -79,7 +82,7 @@ export class Model {
     this.S = data.stations; this.M = data.munis; this.L = data.lines; this.G = data.graph; this.meta = data.meta;
     this.S.forEach((s, i) => { s.idx = i; });
     this.T = this.S.filter(s => s.tk);
-    for (const m of this.M) { m.ward = +m.code < 13200; m.stations = []; }
+    for (const m of this.M) { m.pf = m.pf || '13'; m.ward = m.pf === '13' && +m.code < 13200; m.reg = m.pf === '13' ? (m.ward ? '23' : 'tama') : m.pf; m.stations = []; }
     for (const s of this.T) {
       s.m = this.M[s.mu];
       s.m.stations.push(s);
@@ -169,8 +172,7 @@ export class Model {
   score(s, st) { return st.lens === 'total' ? this.total(s, st.weights) : this.p(s, st.lens); }
 
   inScope(s, st) {
-    if (st.area === '23' && !s.m.ward) return false;
-    if (st.area === 'tama' && s.m.ward) return false;
+    if (st.area !== 'all' && s.m.reg !== st.area) return false;
     if (st.mu != null && s.mu !== st.mu) return false;
     if (st.line != null && !s.lines.includes(st.line)) return false;
     return true;
@@ -243,7 +245,7 @@ export class Model {
       case 'nature': return short ? `${Math.round(s.park || 0)}ha` : `公園 ${f1(s.park)}ha・水辺 ${f1(s.water)}ha`;
       case 'shop': return short ? `${o.super || 0}店` : `スーパー ${o.super || 0}・コンビニ ${o.conv || 0}`;
       case 'gourmet': return short ? `${(o.rest || 0) + (o.cafe || 0) + (o.bar || 0)}` : `飲食店 ${o.rest || 0}・カフェ ${o.cafe || 0}・バー ${o.bar || 0}`;
-      case 'quiet': return short ? `${Math.round(s.q ?? 0)}` : `指数 ${Math.round(s.q ?? 0)}（1日の乗降 ${fman(s.rid)}人）`;
+      case 'quiet': return short ? `${Math.round(s.q ?? 0)}` : `指数 ${Math.round(s.q ?? 0)}${s.rid ? `（1日の乗降 ${fman(s.rid)}人）` : '（乗降客数のデータなし）'}`;
       case 'elev': return s.el == null ? '—' : (short ? `${Math.round(s.el)}m` : `標高 ${f1(s.el)}m`);
       case 'popular': {
         const b = this.bestSurvey(s); if (!b) return short ? '—' : '掲載なし';

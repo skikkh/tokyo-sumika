@@ -1,5 +1,5 @@
 // 画面の部品（HTML文字列を返す）
-import { KEYS, LENSES, LENS, PERSONAS, HUB_NAMES, esc, ruby, f1, fint, fman } from './model.js';
+import { KEYS, LENSES, LENS, PERSONAS, HUB_NAMES, esc, ruby, f1, fint, fman, REG_NAME } from './model.js';
 
 const ICON = {
   ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
@@ -127,8 +127,8 @@ export function stationDetail(model, s, st, R) {
       <section class="sec"><h3>この駅のまとめ</h3><p class="summary">${summaryText(model, s)}</p></section>
       <section class="sec"><h3>総合スコア（${esc(persona)}）</h3>
         <div class="score"><div class="big num">${Math.round(total)}<small>点</small></div>
-        <div class="rk">東京都内 <b>${gr}</b>位 / ${nT}駅<br>${esc(m.n)}内 <b>${mr}</b>位 / ${mn}駅</div></div></section>
-      <section class="sec"><h3>視点別の順位（東京都内${nT}駅中）</h3><div class="lensrank">${lensRows}</div>
+        <div class="rk">東京圏 <b>${gr}</b>位 / ${nT}駅<br>${esc(m.n)}内 <b>${mr}</b>位 / ${mn}駅</div></div></section>
+      <section class="sec"><h3>視点別の順位（東京圏${nT}駅中）</h3><div class="lensrank">${lensRows}</div>
         <p class="note">順位をクリックすると、その視点で地図とランキングを切り替えます。</p></section>
       <section class="sec"><h3>家賃相場</h3>${rent}</section>
       <section class="sec"><h3>主要駅までの時間</h3><div class="tl">${hubs}</div>${com}
@@ -167,7 +167,7 @@ export function muniDetail(model, m, st) {
   const ranks = (m.mr || []).map(([id, r]) => `<div class="badge"><span class="br num">${r}<small style="font-size:11px">位</small></span><span class="bt">${id.includes('suumo') ? 'SUUMO 住みたい自治体ランキング2026 首都圏版' : 'いい部屋ネット 住みここち（自治体）ランキング2026 首都圏版'}</span></div>`).join('');
   return `<div class="d-head">
       <button class="d-close" data-close="detail" aria-label="閉じる">${ICON.close}</button>
-      <div class="d-eyebrow">${m.ward ? '東京23区' : '多摩地域'}</div>
+      <div class="d-eyebrow">${REG_NAME[m.reg] || ''}</div>
       <h2 class="d-name">${ruby(m.n, m.y)}</h2>
       ${m.chr ? `<p class="note" style="margin:6px 0 0;color:var(--ink-2);font-size:13px">${esc(m.chr)}</p>` : ''}
     </div>
@@ -219,13 +219,13 @@ export function board(model, st, R, opt) {
     <div class="persona" data-persona-board>${PERSONAS.map(p => `<button class="pill" data-persona="${p.id}" aria-pressed="${st.persona === p.id}">${esc(p.label)}</button>`).join('')}<button class="pill" data-persona="custom" aria-pressed="${st.persona === 'custom'}">カスタム</button></div>
     <div class="weights">${weights}</div>
     <h3>全駅の一覧（${inScope.length}駅）</h3>
-    <p class="lead" style="font-size:12.5px">各列の値と、東京都内でのパーセンタイル（100に近いほど良い）を並べています。見出しを押すと並び替えます。</p>
+    <p class="lead" style="font-size:12.5px">各列の値と、東京圏（1都3県）でのパーセンタイル（100に近いほど良い）を並べています。見出しを押すと並び替えます。</p>
     ${table}`;
 }
 export function scopeLabel(model, st) {
   const parts = [];
   if (st.mu != null) parts.push(model.M[st.mu].n);
-  else parts.push(st.area === '23' ? '東京23区' : st.area === 'tama' ? '多摩地域' : '東京都');
+  else parts.push(st.area === 'all' ? '東京圏' : REG_NAME[st.area]);
   if (st.line != null) parts.push(model.L[st.line].s + '沿線');
   return parts.join('・');
 }
@@ -241,11 +241,11 @@ export function compareSheet(model, st) {
   const axes = KEYS.map((k, i) => { const [x, y] = pt(i, 100); const [lx, ly] = pt(i, 118); return `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--hair)" stroke-width="1"/><text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle" font-size="12" font-weight="700" fill="var(--ink-2)">${esc(LENS[k].label)}</text>`; }).join('');
   const polys = ss.map((s, j) => `<polygon points="${KEYS.map((k, i) => pt(i, model.p(s, k)).join(',')).join(' ')}" fill="${colors[j]}" fill-opacity=".10" stroke="${colors[j]}" stroke-width="2" stroke-linejoin="round"/>${KEYS.map((k, i) => { const [x, y] = pt(i, model.p(s, k)); return `<circle cx="${x}" cy="${y}" r="4" fill="${colors[j]}" stroke="var(--card)" stroke-width="2"><title>${esc(s.n)} ${esc(LENS[k].label)}: ${Math.round(model.p(s, k))}</title></circle>`; }).join('')}`).join('');
   const rowsDef = [['総合', s => `${Math.round(model.total(s, st.weights))}点`], ...KEYS.map(k => [LENS[k].label, s => model.value(s, k)]),
-    ['1LDK相場', s => s.rent[1] == null ? '—' : `${f1(s.rent[1])}万円`], ['乗降客数', s => `${fman(s.rid)}人/日`], ['区市町村', s => s.m.n]];
+    ['1LDK相場', s => s.rent[1] == null ? '—' : `${f1(s.rent[1])}万円`], ['乗降客数', s => s.rid ? `${fman(s.rid)}人/日` : '—'], ['区市町村', s => s.m.n]];
   const table = `<div class="tablewrap" style="max-height:none"><table class="rt" style="min-width:520px"><thead><tr><th class="l">項目</th>${ss.map((s, j) => `<th class="l"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[j]};margin-right:6px"></span>${esc(s.n)}</th>`).join('')}</tr></thead>
     <tbody>${rowsDef.map(([n, fn]) => `<tr style="cursor:default"><td class="l">${esc(n)}</td>${ss.map(s => `<td class="l">${esc(fn(s))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   return `<button class="ibtn sheet-close" data-close="cmp" aria-label="閉じる">${ICON.close}</button>
-    <h2>駅をくらべる</h2><p class="lead">11の視点のパーセンタイル（東京都内${model.T.length}駅中、100に近いほど良い）を重ねています。</p>
+    <h2>駅をくらべる</h2><p class="lead">11の視点のパーセンタイル（東京圏${model.T.length}駅中、100に近いほど良い）を重ねています。</p>
     <div class="legend-row" style="margin-top:14px">${ss.map((s, j) => `<span><i style="background:${colors[j]}"></i>${esc(s.n)}</span>`).join('')}</div>
     <div class="radar-wrap"><svg class="radar" viewBox="0 0 420 400" role="img" aria-label="視点別スコアのレーダーチャート">${grid}${axes}${polys}</svg>${table}</div>`;
 }
@@ -260,7 +260,7 @@ export function guideSheet(g) {
   const mc = g.moving_cost;
   return `<button class="ibtn sheet-close" data-close="guide" aria-label="閉じる">${ICON.close}</button>
     <h2>引っ越しガイド</h2>
-    <p class="lead">東京都内へ引っ越すときの手続き・お金・時期を、公的機関の案内を中心にまとめました。期限は法令や各機関の案内に基づきます。最新の情報は各窓口で確認してください。</p>
+    <p class="lead">東京圏（東京・神奈川・埼玉・千葉）へ引っ越すときの手続き・お金・時期を、公的機関の案内を中心にまとめました。期限は法令や各機関の案内に基づきます。最新の情報は各窓口で確認してください。</p>
     <div class="cols" style="margin-top:22px">
       <div><h3 style="margin-top:0">手続きの流れ</h3><div class="steps">${steps}</div></div>
       <div>
@@ -301,7 +301,7 @@ export function aboutSheet(model) {
   const method = LENSES.filter(l => l.key !== 'total').map(l => `<div><h5>${esc(l.title)}</h5><p>${esc(l.desc)}</p></div>`).join('');
   return `<button class="ibtn sheet-close" data-close="about" aria-label="閉じる">${ICON.close}</button>
     <h2>データと計算方法</h2>
-    <p class="lead">この図鑑は、公的な統計・オープンデータと主要な住まいランキングを組み合わせ、東京都（島しょ部を除く）の${model.T.length}駅を同じ物差しで比べられるようにしたものです。スコアは各指標を都内全駅の中でのパーセンタイル（0〜100、良いほど高い）に直した値で、総合スコアは選んだ暮らし方の重みで平均しています。</p>
+    <p class="lead">この図鑑は、公的な統計・オープンデータと主要な住まいランキングを組み合わせ、東京圏の${model.T.length}駅を同じ物差しで比べられるようにしたものです。対象は東京都（島しょ部を除く）の全駅と、神奈川・埼玉・千葉のうち都心の主要6駅（東京・大手町・新宿・渋谷・池袋・品川）のどれかまで60分以内で行ける駅です。スコアは各指標を都内全駅の中でのパーセンタイル（0〜100、良いほど高い）に直した値で、総合スコアは選んだ暮らし方の重みで平均しています。</p>
     <h3>各視点の作り方</h3><div class="method">${method}</div>
     <h3>所要時間の計算</h3>
     <p class="lead" style="font-size:13px">国土数値情報の線路形状から駅間の距離を測り、路線の種類ごとの平均速度と停車時間で乗車時間を見積もっています。乗り換えは1回5分、直通運転の駅は30秒、急行・快速への乗り換えは1.5分、500m以内の別駅への徒歩は距離に応じて加算しています。待ち時間は含みません。実際の所要時間は時間帯やダイヤで変わります。</p>
@@ -312,11 +312,11 @@ export function aboutSheet(model) {
       <li>国土交通省 国土数値情報「行政区域（2025年）」「鉄道（2024年）」「駅別乗降客数（2023年度）」（CC BY 4.0）</li>
       <li>国土地理院「標高タイル（数値標高モデル）」</li>
       <li>© OpenStreetMap contributors（ODbL）: 駅名のよみ、公園・水面・河川・道路、生活施設</li>
-      <li>警視庁「区市町村の町丁別、罪種別及び手口別認知件数」（${esc(String(model.M[0].cry || 2025))}年）</li>
-      <li>東京都「住民基本台帳による世帯と人口」（2026年1月）、総務省「令和2年国勢調査」</li>
-      <li>東京都 待機児童数（2025年4月1日）、各区市町村の公式サイト（特色）</li>
+      <li>警視庁「区市町村の町丁別、罪種別及び手口別認知件数」、神奈川県警察・埼玉県警察・千葉県警察の市区町村別の刑法犯認知件数（いずれも${esc(String(model.M[0].cry || 2025))}年）</li>
+      <li>東京都「住民基本台帳による世帯と人口」（2026年1月）、総務省「住民基本台帳に基づく人口、人口動態及び世帯数」（2026年1月1日）、神奈川県・埼玉県・千葉県の人口統計、総務省「令和2年国勢調査」</li>
+      <li>東京都・神奈川県・埼玉県・千葉県と各市の待機児童数（2025年4月1日）、各区市町村の公式サイト（特色）</li>
       <li><a href="${esc(m.cong_src.url)}" target="_blank" rel="noopener">${esc(m.cong_src.src)}</a>（${esc(String(m.cong_src.fy))}年度）</li>
-      <li><a href="${esc(m.quake_src.url)}" target="_blank" rel="noopener">東京都「${esc(m.quake_src.survey)}」</a>（${esc(m.quake_src.pub)}）</li>
+      <li><a href="${esc(m.quake_src.url)}" target="_blank" rel="noopener">東京都「${esc(m.quake_src.survey)}」</a>（${esc(m.quake_src.pub)}、東京都内のみ）</li>
       <li><a href="${esc(m.koto5.url)}" target="_blank" rel="noopener">${esc(m.koto5.plan_name)}</a>（${esc(m.koto5.published)}）</li>
       <li>SUUMO 路線別の家賃相場（${esc(m.rent_date)}取得）${m.ward_rent_src?.name ? `、${esc(m.ward_rent_src.name)}` : ''}、LIFULL HOME'S 市区町村別の家賃相場</li>
       ${sv}

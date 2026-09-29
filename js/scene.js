@@ -4,7 +4,8 @@ import { MapControls } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples
 import { esc } from './model.js';
 
 const U = 100;            // 1単位 = 100m
-const SLAB = 0.8;         // 東京都の地面の厚み
+const SLAB = 0.8;
+const MU_MAX = 192, MU_VEC = MU_MAX / 4;   // 区市町村の数の上限（シェーダーの配列）         // 東京都の地面の厚み
 const CTX_Y = 0.32;       // 周辺県の地面
 const OVER = SLAB + 0.02; // 公園・水面など
 const LINE_Y = SLAB + 0.22;
@@ -99,7 +100,7 @@ export class MapScene {
     this.u = {
       uHill: { value: null }, uElev: { value: null }, uDem: { value: new THREE.Vector4(d.x0 / U, d.z0 / U, d.W * d.cell / U, d.H * d.cell / U) },
       uHillK: { value: 1.0 }, uElevOn: { value: 0 }, uPaper: { value: new THREE.Color() },
-      uFade: { value: new THREE.Vector4(-512, -305, 512, 318) },
+      uFade: { value: new THREE.Vector4(d.x0 / U - 40, d.z0 / U - 40, (d.x0 + d.W * d.cell) / U + 40, (d.z0 + d.H * d.cell) / U + 40) },
       uRamp: { value: Array.from({ length: 8 }, () => new THREE.Color()) },
     };
     this.buildLights();
@@ -176,7 +177,8 @@ diffuseColor.rgb = mix(uPaper, diffuseColor.rgb, fe);` : ''}`);
   buildGround() {
     const g = this.geo;
     // 海（東京湾）
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(2400, 1400).rotateX(-Math.PI / 2), this.seaMat = this.landMaterial({ hill: false, fade: true }));
+    const dm = this.geo.dem, sx = (dm.x0 + dm.W * dm.cell / 2) / U, sz = (dm.z0 + dm.H * dm.cell / 2) / U;
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(dm.W * dm.cell / U + 1600, dm.H * dm.cell / U + 1600).rotateX(-Math.PI / 2).translate(sx, 0, sz), this.seaMat = this.landMaterial({ hill: false, fade: true }));
     sea.position.set(-30, 0, -20); sea.receiveShadow = true; this.scene.add(sea);
     // 周辺県
     const ctxPolys = g.context.map(c => c.rings);
@@ -270,10 +272,12 @@ diffuseColor.rgb = mix(uPaper, diffuseColor.rgb, fe);` : ''}`);
       g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 2000);
       return g;
     };
-    this.ru = { uWpp: { value: 0.001 }, uWidth: { value: 3.2 }, uLanePx: { value: 3.6 }, uMinW: { value: 0.09 }, uSel: { value: -1 }, uCasing: { value: 0 }, uPaper: { value: new THREE.Color() }, uCase: { value: new THREE.Color() }, uDimK: { value: 0.78 }, uHiW: { value: 2.0 }, uCtx: { value: 0 }, uMuH: { value: this.muLift = new Float32Array(64) }, uFocusMu: { value: -1 }, uOutK: { value: 0.42 } };
-    const vs = `attribute vec2 aN; attribute float aSide; attribute float aLane; attribute vec3 aColor; attribute float aLine; attribute float aMu;
+    this.ru = { uWpp: { value: 0.001 }, uWidth: { value: 3.2 }, uLanePx: { value: 3.6 }, uMinW: { value: 0.09 }, uSel: { value: -1 }, uCasing: { value: 0 }, uPaper: { value: new THREE.Color() }, uCase: { value: new THREE.Color() }, uDimK: { value: 0.78 }, uHiW: { value: 2.0 }, uCtx: { value: 0 }, uMuH: { value: this.muLift = new Float32Array(MU_MAX) }, uFocusMu: { value: -1 }, uOutK: { value: 0.42 } };
+    const vs = `#define MU_MAX ${MU_MAX}
+#define MU_VEC ${MU_VEC}
+attribute vec2 aN; attribute float aSide; attribute float aLane; attribute vec3 aColor; attribute float aLine; attribute float aMu;
 uniform float uWpp; uniform float uWidth; uniform float uLanePx; uniform float uMinW; uniform float uSel; uniform float uCasing; uniform float uHiW;
-uniform float uMuH[64]; uniform float uFocusMu;
+uniform vec4 uMuH[MU_VEC]; uniform float uFocusMu;
 varying vec3 vColor; varying float vKeep; varying float vOut;
 #include <fog_pars_vertex>
 void main(){
@@ -287,7 +291,7 @@ void main(){
   vec3 p = position + vec3(aN.x, 0.0, aN.y) * (aSide * halfW + lane);
   p.y += (sel ? 0.05 : 0.0) + (1.0 - uCasing) * 0.006;
   int mi = int(aMu + 0.5) - 1;
-  if (mi >= 0 && mi < 64) p.y += uMuH[mi];   // 区市町村の立体の上に載せる
+  if (mi >= 0 && mi < MU_MAX) { int q = mi / 4; p.y += uMuH[q][mi - q * 4]; }   // 区市町村の立体の上に載せる
   vColor = aColor; vKeep = keep;
   vOut = (uFocusMu > -0.5 && abs(aMu - 1.0 - uFocusMu) > 0.5) ? 1.0 : 0.0;   // 絞り込んだ区の外
   vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
@@ -421,7 +425,7 @@ void main(){
   buildControls() {
     const c = this.controls = new MapControls(this.camera, this.renderer.domElement);
     c.enableDamping = true; c.dampingFactor = 0.1; c.screenSpacePanning = false;
-    c.maxPolarAngle = 1.18; c.minDistance = 6; c.maxDistance = 1350; c.zoomToCursor = true; c.zoomSpeed = 1.15; c.rotateSpeed = 0.55;
+    c.maxPolarAngle = 1.18; c.minDistance = 6; c.maxDistance = 2300; c.zoomToCursor = true; c.zoomSpeed = 1.15; c.rotateSpeed = 0.55;
     c.touches = { ONE: -1, TWO: -1 };   // タッチは bindTouch() で独自に処理（Googleマップ風）
     c.addEventListener('change', () => { this.dirty = true; });
     c.addEventListener('start', () => { this.anim = null; this.inertia = null; this.userMoving = true; this.cb.userMove?.(); });
@@ -890,7 +894,7 @@ void main(){
     this.pillars.instanceMatrix.needsUpdate = true; if (this.pillars.instanceColor) this.pillars.instanceColor.needsUpdate = true;
     this.dotO.instanceMatrix.needsUpdate = true; this.dotI.instanceMatrix.needsUpdate = true;
     // 区市町村の高さ（路線もその上に載せる）
-    this.muniMeshes.forEach((m, i) => { m.mesh.scale.y = m.h; if (i < 64) this.muLift[i] = SLAB * (m.h - 1); });
+    this.muniMeshes.forEach((m, i) => { m.mesh.scale.y = m.h; if (i < MU_MAX) this.muLift[i] = SLAB * (m.h - 1); });
     for (let i = 0; i < this.muLabels.length; i++) {
       const L = this.muLabels[i]; const mh = this.muniMeshes[i].h;
       L.mesh.position.y = SLAB * mh + (this.opts?.mode === 'muni' ? 0.4 : 0.07);
