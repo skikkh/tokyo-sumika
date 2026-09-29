@@ -85,7 +85,8 @@ export class MapScene {
   constructor(el, labelsEl, geo, model, cb) {
     this.el = el; this.labelsEl = labelsEl; this.geo = geo; this.model = model; this.cb = cb;
     this.dirty = true; this.anim = null; this.mode = 'station'; this.elevOn = false;
-    const r = this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });
+    this.promo = /[?&]promo/.test(location.search);   // 動画の撮影用（1コマずつ描く）
+    const r = this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: this.promo });
     r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     r.setSize(el.clientWidth, el.clientHeight, false);
     r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -764,7 +765,13 @@ void main(){
 
   // ---------- 毎フレーム ----------
   loop(now) {
+    if (this.manual) return;   // 撮影中は step() を外から呼ぶ
     requestAnimationFrame(this.loop);
+    this.step(now);
+  }
+  // 1コマ分の更新と描画（撮影モードでは外部から時刻を渡して呼ぶ）
+  step(now) {
+    if (this.manual) this.dirty = true;
     if (this.anim) {
       const { a, b, t0, ms } = this.anim; const t = Math.min(1, (now - t0) / ms); const k = ease(t);
       const lerp = (p, q) => p + (q - p) * k;

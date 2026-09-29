@@ -29,7 +29,7 @@ async function boot() {
     buildControls();
     initPanels();
     apply();
-    if (/[?&]debug/.test(location.search)) window.__sumika = { scene, model, st };
+    if (/[?&](debug|promo)/.test(location.search)) window.__sumika = { scene, model, st, apply, setLens, setMuScope, setLineScope, setDest, selectStation, closeDetail, setMode };
     (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { scene.applyTheme(); apply(); });
     const boot = $('#boot'); boot.classList.add('done'); setTimeout(() => boot.remove(), 700);
     openFromHash();

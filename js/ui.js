@@ -245,7 +245,7 @@ export function compareSheet(model, st) {
   const table = `<div class="tablewrap" style="max-height:none"><table class="rt" style="min-width:520px"><thead><tr><th class="l">項目</th>${ss.map((s, j) => `<th class="l"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[j]};margin-right:6px"></span>${esc(s.n)}</th>`).join('')}</tr></thead>
     <tbody>${rowsDef.map(([n, fn]) => `<tr style="cursor:default"><td class="l">${esc(n)}</td>${ss.map(s => `<td class="l">${esc(fn(s))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   return `<button class="ibtn sheet-close" data-close="cmp" aria-label="閉じる">${ICON.close}</button>
-    <h2>駅をくらべる</h2><p class="lead">11の視点のパーセンタイル（東京都内647駅中、100に近いほど良い）を重ねています。</p>
+    <h2>駅をくらべる</h2><p class="lead">11の視点のパーセンタイル（東京都内${model.T.length}駅中、100に近いほど良い）を重ねています。</p>
     <div class="legend-row" style="margin-top:14px">${ss.map((s, j) => `<span><i style="background:${colors[j]}"></i>${esc(s.n)}</span>`).join('')}</div>
     <div class="radar-wrap"><svg class="radar" viewBox="0 0 420 400" role="img" aria-label="視点別スコアのレーダーチャート">${grid}${axes}${polys}</svg>${table}</div>`;
 }

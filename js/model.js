@@ -192,22 +192,24 @@ export class Model {
     }
     const list = this.T.filter(s => flag[s.i] === 3).sort((a, b) => (score[b.i] - score[a.i]) || (total[b.i] - total[a.i]));
     const rank = new Int32Array(this.S.length).fill(0);
+    // 同順位: 総合は表示する整数点が同じとき、各視点は元の値が同じとき
+    const tk = st.lens === 'total' ? Math.round : v => v;
     let r = 0, prev = null;
-    list.forEach((s, i) => { const v = Math.round(score[s.i]); if (v !== prev) { r = i + 1; prev = v; } rank[s.i] = r; });
+    list.forEach((s, i) => { const v = tk(score[s.i]); if (v !== prev) { r = i + 1; prev = v; } rank[s.i] = r; });
     const scoped = this.T.filter(s => flag[s.i] & 1).length;
     return { score, total, flag, list, rank, scoped };
   }
   // 全駅の中での順位（視点ごと）
   globalRank(s, key, weights) {
-    const val = x => key === 'total' ? this.total(x, weights) : this.p(x, key);
-    const v = Math.round(val(s));
-    let r = 1; for (const x of this.T) if (Math.round(val(x)) > v) r++;
+    const val = x => key === 'total' ? Math.round(this.total(x, weights)) : Math.fround(this.p(x, key));
+    const v = val(s);
+    let r = 1; for (const x of this.T) if (val(x) > v) r++;
     return r;
   }
   rankWithin(s, key, weights, pred) {
-    const val = x => key === 'total' ? this.total(x, weights) : this.p(x, key);
-    const v = Math.round(val(s));
-    let r = 1, n = 0; for (const x of this.T) { if (!pred(x)) continue; n++; if (Math.round(val(x)) > v) r++; }
+    const val = x => key === 'total' ? Math.round(this.total(x, weights)) : Math.fround(this.p(x, key));
+    const v = val(s);
+    let r = 1, n = 0; for (const x of this.T) { if (!pred(x)) continue; n++; if (val(x) > v) r++; }
     return [r, n];
   }
 
