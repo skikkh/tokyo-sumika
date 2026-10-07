@@ -2,6 +2,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/+esm';
 import { MapControls } from 'https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/controls/MapControls.js/+esm';
 import { esc } from './model.js';
+import { REGION, lonlatToXZ, mapLabelNames } from './region.js';
 
 const U = 100;            // 1単位 = 100m
 const SLAB = 0.8;
@@ -364,6 +365,7 @@ void main(){
 
   // ---------- 区市町村名（地面に置く文字） ----------
   buildMuniLabels() {
+    const names = mapLabelNames(this.model.M);
     this.muLabels = this.geo.munis.map((m, i) => {
       const [x, z, r] = this.geo.labels[i];
       const tex = new THREE.CanvasTexture(document.createElement('canvas'));
@@ -372,7 +374,7 @@ void main(){
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), mat);
       mesh.position.set(x / U, OVER + 0.03, z / U); mesh.renderOrder = 8;
       this.scene.add(mesh);
-      return { mesh, tex, mat, x: x / U, z: z / U, r: r / U, name: m.name, yomi: this.model.M[i].y, value: '' };
+      return { mesh, tex, mat, x: x / U, z: z / U, r: r / U, name: names[i][0], yomi: names[i][1], value: '' };
     });
   }
   drawMuniLabel(L) {
@@ -402,20 +404,20 @@ void main(){
 
   buildLandmarks() {
     const g = this.lm = new THREE.Group(); this.scene.add(g);
-    const P = (lon, lat) => { const LON0 = 139.45, LAT0 = 35.69; return [(lon - LON0) * 90510.7 / U, -(lat - LAT0) * 110953 / U]; };
-    const white = new THREE.MeshLambertMaterial({ color: 0xf2f2ef }), red = new THREE.MeshLambertMaterial({ color: 0xe0562b }), grey = new THREE.MeshLambertMaterial({ color: 0xc8ccd0 });
-    const add = (m, x, z) => { m.position.set(x, SLAB, z); m.castShadow = true; g.add(m); return m; };
-    let [x, z] = P(139.8107, 35.7101);
-    const tree = new THREE.CylinderGeometry(0.12, 0.62, 12.6, 12); tree.translate(0, 6.3, 0); add(new THREE.Mesh(tree, white), x, z);
-    [x, z] = P(139.7454, 35.6586);
-    const tower = new THREE.ConeGeometry(0.85, 6.6, 4); tower.translate(0, 3.3, 0); add(new THREE.Mesh(tower, red), x, z);
-    [x, z] = P(139.6917, 35.6896);
-    const t1 = new THREE.BoxGeometry(0.6, 4.8, 0.7); t1.translate(-0.4, 2.4, 0); const t2 = new THREE.BoxGeometry(0.6, 4.8, 0.7); t2.translate(0.4, 2.4, 0);
-    add(new THREE.Mesh(t1, grey), x, z); add(new THREE.Mesh(t2, grey), x, z);
-    const names = [['東京スカイツリー', 'とうきょうすかいつりー', 139.8107, 35.7101, 12.8], ['東京タワー', 'とうきょうたわー', 139.7454, 35.6586, 6.8], ['東京都庁', 'とうきょうとちょう', 139.6917, 35.6896, 5.0],
-      ['皇居', 'こうきょ', 139.7528, 35.6852, 0.3], ['羽田空港', 'はねだくうこう', 139.7798, 35.5494, 0.3], ['高尾山', 'たかおさん', 139.2437, 35.6251, 0.3], ['奥多摩湖', 'おくたまこ', 139.0490, 35.7870, 0.3], ['国営昭和記念公園', 'こくえいしょうわきねんこうえん', 139.3933, 35.7033, 0.3], ['お台場', 'おだいば', 139.7750, 35.6290, 0.3]];
-    this.lmLabels = names.map(([n, y, lon, lat, h]) => {
-      const [lx, lz] = P(lon, lat);
+    const mats = { white: new THREE.MeshLambertMaterial({ color: 0xf2f2ef }), red: new THREE.MeshLambertMaterial({ color: 0xe0562b }), grey: new THREE.MeshLambertMaterial({ color: 0xc8ccd0 }) };
+    const add = (geo, c, x, z) => { const m = new THREE.Mesh(geo, mats[c]); m.position.set(x, SLAB, z); m.castShadow = true; g.add(m); return m; };
+    for (const sh of REGION.shapes) {
+      const [x, z] = lonlatToXZ(sh.lon, sh.lat);
+      if (sh.t === 'cyl') { const geo = new THREE.CylinderGeometry(sh.r0, sh.r1, sh.h, sh.seg); geo.translate(0, sh.h / 2, 0); add(geo, sh.c, x, z); }
+      else if (sh.t === 'cone') { const geo = new THREE.ConeGeometry(sh.r, sh.h, sh.seg); geo.translate(0, sh.h / 2, 0); add(geo, sh.c, x, z); }
+      else if (sh.t === 'box') { const geo = new THREE.BoxGeometry(sh.w, sh.h, sh.d); geo.translate(0, sh.h / 2, 0); add(geo, sh.c, x, z); }
+      else if (sh.t === 'twin') {
+        const t1 = new THREE.BoxGeometry(0.6, sh.h, 0.7); t1.translate(-0.4, sh.h / 2, 0); const t2 = new THREE.BoxGeometry(0.6, sh.h, 0.7); t2.translate(0.4, sh.h / 2, 0);
+        add(t1, sh.c, x, z); add(t2, sh.c, x, z);
+      }
+    }
+    this.lmLabels = REGION.landmarks.map(([n, y, lon, lat, h]) => {
+      const [lx, lz] = lonlatToXZ(lon, lat);
       const el = document.createElement('div'); el.className = 'lbl lm on'; el.innerHTML = `<ruby>${esc(n)}<rt>${esc(y)}</rt></ruby>`;
       this.labelsEl.appendChild(el);
       return { el, x: lx, z: lz, y: SLAB + h, w: 0, h: 0 };
@@ -431,7 +433,7 @@ void main(){
     c.addEventListener('start', () => { this.anim = null; this.inertia = null; this.userMoving = true; this.cb.userMove?.(); });
     c.addEventListener('end', () => { this.userMoving = false; });
     const narrow = matchMedia('(max-width:760px)').matches;
-    this.home = narrow ? { tx: 255, tz: 18, dist: 520, polar: 0.86, az: 0 } : { tx: 214, tz: 4, dist: 430, polar: 0.92, az: 0 };
+    this.home = { ...(narrow ? REGION.home.narrow : REGION.home.wide) };
     this.setView(this.home);
   }
   setView(v) {

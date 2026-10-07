@@ -1,10 +1,11 @@
 // データの復号・採点・ランキング・経路探索
+import { REGION } from './region.js';
 export const KEYS = ['rent', 'access', 'safety', 'child', 'nature', 'shop', 'gourmet', 'quiet', 'elev', 'popular', 'transit'];
 
 export const LENSES = [
   { key: 'total', label: '総合', title: '総合ランキング', desc: '選んだ暮らし方に合わせて、11の視点を重み付けして合成したスコアです。' },
   { key: 'rent', label: '家賃', title: '家賃の手頃さ', desc: '1K・1DKの家賃相場。安いほど上位です。' },
-  { key: 'access', label: 'アクセス', title: '都心アクセス', desc: '東京・大手町・新宿・渋谷・池袋・品川への平均所要時間。勤務地を入れるとその駅までの時間で比べます。' },
+  { key: 'access', label: 'アクセス', title: '都心アクセス', desc: `${REGION.hubsText}への平均所要時間。勤務地を入れるとその駅までの時間で比べます。` },
   { key: 'safety', label: '治安', title: '治安', desc: '市区町村の刑法犯認知件数（人口千人あたり）。少ないほど上位です。都心は昼間人口が多いぶん高く出ます。' },
   { key: 'child', label: '子育て', title: '子育てのしやすさ', desc: '待機児童数と年少人口の割合（市区町村）、駅周辺の公園・保育施設・学校の多さを合わせた指数です。' },
   { key: 'nature', label: '自然', title: '公園・自然', desc: '駅から1km圏にある公園と水辺の面積です。' },
@@ -28,10 +29,10 @@ export const PERSONAS = [
 ];
 
 export const POI_KEYS = ['super', 'conv', 'drug', 'rest', 'cafe', 'bar', 'med', 'child', 'school', 'lib', 'bath'];
-export const HUB_NAMES = ['東京', '大手町', '新宿', '渋谷', '池袋', '品川'];
+export const HUB_NAMES = REGION.hubs;
 // 地域（絞り込みの単位）
-export const REGIONS = [['all', '全域'], ['23', '23区'], ['tama', '多摩'], ['14', '神奈川'], ['11', '埼玉'], ['12', '千葉']];
-export const REG_NAME = { '23': '東京23区', tama: '東京都・多摩地域', '14': '神奈川県', '11': '埼玉県', '12': '千葉県' };
+export const REGIONS = REGION.regions;
+export const REG_NAME = REGION.regName;
 
 // ---------- 文字列 ----------
 export function esc(s) {
@@ -82,7 +83,7 @@ export class Model {
     this.S = data.stations; this.M = data.munis; this.L = data.lines; this.G = data.graph; this.meta = data.meta;
     this.S.forEach((s, i) => { s.idx = i; });
     this.T = this.S.filter(s => s.tk);
-    for (const m of this.M) { m.pf = m.pf || '13'; m.ward = m.pf === '13' && +m.code < 13200; m.reg = m.pf === '13' ? (m.ward ? '23' : 'tama') : m.pf; m.stations = []; }
+    for (const m of this.M) { m.pf = m.pf || '13'; m.reg = REGION.regOf(m); m.stations = []; }
     for (const s of this.T) {
       s.m = this.M[s.mu];
       s.m.stations.push(s);
@@ -226,7 +227,7 @@ export class Model {
     if (id.includes('anaba')) return 'SUUMO穴場';
     if (id.includes('suumo')) return 'SUUMO住みたい街';
     if (id.includes('sumicoco')) return '住みここち';
-    if (id.includes('lifull_2026_shutoken_rent')) return 'HOME\'S借りて住みたい';
+    if (id.includes('lifull') && id.includes('rent')) return 'HOME\'S借りて住みたい';
     if (id.includes('lifull')) return 'HOME\'S買って住みたい';
     return 'ランキング';
   }
@@ -238,7 +239,7 @@ export class Model {
       case 'access': {
         const t = this.accessMin(s); if (t == null || !isFinite(t)) return '—';
         if (this.commute) return short ? `${Math.round(t)}分` : `${this.S[this.commute.sid].n}まで ${Math.round(t)}分`;
-        return short ? `${Math.round(t)}分` : `都心6駅へ平均 ${Math.round(t)}分`;
+        return short ? `${Math.round(t)}分` : `${REGION.hubsShort}へ平均 ${Math.round(t)}分`;
       }
       case 'safety': return s.m.cr == null ? '—' : (short ? `${f1(s.m.cr)}件` : `刑法犯 ${f1(s.m.cr)}件/千人`);
       case 'child': return short ? `${Math.round(s.ch ?? 0)}` : `指数 ${Math.round(s.ch ?? 0)}（保育・学校 ${(o.child || 0) + (o.school || 0)}か所）`;

@@ -1,31 +1,31 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" data-region="osaka">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#ECEFEA" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0E1316" media="(prefers-color-scheme: dark)">
-<meta property="og:title" content="東京圏すみか図鑑｜住む駅を11の視点で比べる3Dマップ">
-<meta property="og:description" content="東京・神奈川・埼玉・千葉の1,287駅を、家賃・通勤・治安・子育て・自然・買い物・高台など11の視点で比べられる3D地図と引っ越しガイド。無料・登録なし。">
+<meta property="og:title" content="大阪圏すみか図鑑｜住む駅を11の視点で比べる3Dマップ">
+<meta property="og:description" content="大阪・兵庫・京都・奈良・滋賀・和歌山の1,002駅を、家賃・通勤・治安・子育て・自然・買い物・高台など11の視点で比べられる3D地図と引っ越しガイド。無料・登録なし。">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="東京圏すみか図鑑">
+<meta property="og:site_name" content="大阪圏すみか図鑑">
 <meta property="og:locale" content="ja_JP">
-<meta property="og:url" content="https://skikkh.github.io/tokyo-sumika/">
-<meta property="og:image" content="https://skikkh.github.io/tokyo-sumika/og.jpg">
+<meta property="og:url" content="https://skikkh.github.io/tokyo-sumika/osaka/">
+<meta property="og:image" content="https://skikkh.github.io/tokyo-sumika/osaka/og.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="東京圏1,287駅を11の視点で比較する3Dマップ「東京圏すみか図鑑」">
+<meta property="og:image:alt" content="大阪圏1,002駅を11の視点で比較する3Dマップ「大阪圏すみか図鑑」">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="東京圏すみか図鑑｜住む駅を11の視点で比べる3Dマップ">
-<meta name="twitter:image" content="https://skikkh.github.io/tokyo-sumika/og.jpg">
-<link rel="canonical" href="https://skikkh.github.io/tokyo-sumika/">
+<meta name="twitter:title" content="大阪圏すみか図鑑｜住む駅を11の視点で比べる3Dマップ">
+<meta name="twitter:image" content="https://skikkh.github.io/tokyo-sumika/osaka/og.jpg">
+<link rel="canonical" href="https://skikkh.github.io/tokyo-sumika/osaka/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 30 30%22%3E%3Crect width=%2230%22 height=%2230%22 rx=%228%22 fill=%22%2315191B%22/%3E%3Cpath d=%22M15 22.6H8.4V14L15 7.4%22 fill=%22none%22 stroke=%22%237FBF1F%22 stroke-width=%222.8%22 stroke-linejoin=%22round%22/%3E%3Cpath d=%22M15 7.4L21.6 14V22.6H15%22 fill=%22none%22 stroke=%22%23F15A22%22 stroke-width=%222.8%22 stroke-linejoin=%22round%22/%3E%3Ccircle cx=%2215%22 cy=%227.4%22 r=%222.6%22 fill=%22%23ECEFEA%22 stroke=%22%2315191B%22 stroke-width=%221.3%22/%3E%3Ccircle cx=%2215%22 cy=%2222.6%22 r=%222.6%22 fill=%22%23ECEFEA%22 stroke=%22%2315191B%22 stroke-width=%221.3%22/%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <style>:root{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
-<title>東京圏すみか図鑑</title>
-<meta name="description" content="東京・神奈川・埼玉・千葉の1,287駅を、家賃・通勤・治安・子育て・自然・買い物・高台など11の視点で比べられる3D地図">
+<title>大阪圏すみか図鑑</title>
+<meta name="description" content="大阪・兵庫・京都・奈良・滋賀・和歌山の1,002駅を、家賃・通勤・治安・子育て・自然・買い物・高台など11の視点で比べられる3D地図">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Barlow:wght@500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap">
@@ -509,16 +509,16 @@ kbd{font-family:var(--f-num);font-size:11px;font-weight:700;color:var(--ink-3);b
 </style>
 
 <div id="app">
-  <div id="map" aria-label="東京圏の3D地図"></div>
+  <div id="map" aria-label="大阪圏の3D地図"></div>
   <div id="labels"></div>
   <div id="tip" hidden></div>
 
   <header class="topbar">
     <div class="brand card">
       <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="8" fill="var(--ink)"/><path d="M15 22.6H8.4V14L15 7.4" fill="none" stroke="#7FBF1F" stroke-width="2.8" stroke-linejoin="round"/><path d="M15 7.4L21.6 14V22.6H15" fill="none" stroke="#F15A22" stroke-width="2.8" stroke-linejoin="round"/><circle cx="15" cy="7.4" r="2.6" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.3"/><circle cx="15" cy="22.6" r="2.6" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.3"/></svg>
-      <div><h1>東京圏すみか図鑑</h1><p class="en">TOKYO AREA SUMIKA ATLAS</p></div>
-      <nav class="rsw" aria-label="地域を切り替える"><a href="./" aria-current="page">東京圏</a><a href="osaka/">大阪圏</a></nav>
-      <div class="stats"><span><b id="st-n">648</b>駅</span><span><b id="st-m">53</b>市区町村</span></div>
+      <div><h1>大阪圏すみか図鑑</h1><p class="en">OSAKA AREA SUMIKA ATLAS</p></div>
+      <nav class="rsw" aria-label="地域を切り替える"><a href="../">東京圏</a><a href="./" aria-current="page">大阪圏</a></nav>
+      <div class="stats"><span><b id="st-n">1002</b>駅</span><span><b id="st-m">143</b>市区町村</span></div>
     </div>
     <nav class="lens card" aria-label="視点を選ぶ">
       <span class="lens-label">視点</span>
@@ -558,11 +558,13 @@ kbd{font-family:var(--f-num);font-size:11px;font-weight:700;color:var(--ink-3);b
       </div>
       <div class="row2" id="area" role="group" aria-label="エリア">
         <button class="pill" data-area="all" aria-pressed="true">全域</button>
-        <button class="pill" data-area="23" aria-pressed="false">23区</button>
-        <button class="pill" data-area="tama" aria-pressed="false">多摩</button>
-        <button class="pill" data-area="14" aria-pressed="false">神奈川</button>
-        <button class="pill" data-area="11" aria-pressed="false">埼玉</button>
-        <button class="pill" data-area="12" aria-pressed="false">千葉</button>
+        <button class="pill" data-area="osk" aria-pressed="false">大阪市</button>
+        <button class="pill" data-area="27" aria-pressed="false">大阪府</button>
+        <button class="pill" data-area="28" aria-pressed="false">兵庫</button>
+        <button class="pill" data-area="26" aria-pressed="false">京都</button>
+        <button class="pill" data-area="29" aria-pressed="false">奈良</button>
+        <button class="pill" data-area="25" aria-pressed="false">滋賀</button>
+        <button class="pill" data-area="30" aria-pressed="false">和歌山</button>
         <span id="scope-tags" class="row2"></span>
       </div>
       <div class="row2">
@@ -600,7 +602,7 @@ kbd{font-family:var(--f-num);font-size:11px;font-weight:700;color:var(--ink-3);b
     <div class="cbox card c-com">
       <span class="lab">勤務地・通学先から探す</span>
       <div class="crow">
-        <div class="dest"><input id="f-dest" placeholder="駅名を入力（例: 大手町）" autocomplete="off" aria-label="勤務地・通学先の駅"><div class="sugg" id="f-dest-sugg" hidden></div></div>
+        <div class="dest"><input id="f-dest" placeholder="駅名を入力（例: 本町）" autocomplete="off" aria-label="勤務地・通学先の駅"><div class="sugg" id="f-dest-sugg" hidden></div></div>
         <span class="val num" id="f-com-v" style="font-size:17px;white-space:nowrap">—</span>
       </div>
       <input type="range" id="f-com" min="10" max="90" step="5" value="90" aria-label="通勤時間の上限" disabled>
@@ -634,7 +636,7 @@ kbd{font-family:var(--f-num);font-size:11px;font-weight:700;color:var(--ink-3);b
     <p id="boot-msg">地図と駅のデータを読み込んでいます</p>
   </div></div>
 </div>
-<script type="module" src="js/main.js"></script>
+<script type="module" src="../js/main.js"></script>
 
 </body>
 </html>

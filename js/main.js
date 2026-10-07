@@ -1,6 +1,7 @@
 import { Model, KEYS, LENSES, LENS, PERSONAS, esc, ruby, f1, REGIONS, REG_NAME } from './model.js';
 import { MapScene } from './scene.js';
 import * as UI from './ui.js';
+import { REGION } from './region.js';
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -300,7 +301,7 @@ function muOptions() {
   }).join('');
 }
 function lineOptions() {
-  const groups = [['jr', 'JR'], ['metro', '東京メトロ'], ['toei', '都営'], ['private', '私鉄・その他']];
+  const groups = REGION.lineGroups;
   return `<option value="">路線で絞る</option>` + groups.map(([t, n]) => {
     const ls = model.L.filter(L => L.t === t && !L.ctx && L.tst.length >= 2);
     return `<optgroup label="${n}">${ls.map(L => `<option value="${L.i}">${esc(L.n)}（${L.tst.length}駅）</option>`).join('')}</optgroup>`;

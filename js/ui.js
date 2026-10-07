@@ -1,5 +1,6 @@
 // 画面の部品（HTML文字列を返す）
 import { KEYS, LENSES, LENS, PERSONAS, HUB_NAMES, esc, ruby, f1, fint, fman, REG_NAME } from './model.js';
+import { REGION } from './region.js';
 
 const ICON = {
   ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
@@ -36,6 +37,9 @@ export function muniRow(m, v, rank, active) {
     <span class="vv"><b>${esc(v.label)}</b></span></button>`;
 }
 
+
+// 家賃相場を取得した年月（例: 2026年9月）
+const rentMonth = model => { const m = /^(\d{4})-(\d{2})/.exec(model.meta.rent_date || ''); return m ? `${m[1]}年${+m[2]}月` : ''; };
 
 // 駅のまとめ（強み・弱みを文章に）
 const PHRASE = {
@@ -80,7 +84,7 @@ export function stationDetail(model, s, st, R) {
   // 家賃
   const rentSrc = s.rs ? '<span class="src">SUUMO掲載相場</span>' : '<span class="src">当サイト推計</span>';
   const rent = `<div class="kv">${['1K・1DK', '1LDK・2DK', '2LDK・3DK'].map((k, i) => `<div><div class="k">${k}</div><div class="v">${s.rent[i] == null ? '—' : `${f1(s.rent[i])}<small>万円</small>`}</div></div>`).join('')}</div>
-    <p class="note">${rentSrc}${s.rs ? ' 2026年9月時点。複数路線は平均。' : ' 市区町村の相場と近くの駅の実績から推計した目安です。'}市区町村の1K相場は ${m.rent?.['1K'] ? `${f1(m.rent['1K'])}万円` : '—'}。</p>`;
+    <p class="note">${rentSrc}${s.rs ? ` ${rentMonth(model)}時点。複数路線は平均。` : ' 市区町村の相場と近くの駅の実績から推計した目安です。'}市区町村の1K相場は ${m.rent?.['1K'] ? `${f1(m.rent['1K'])}万円` : '—'}。</p>`;
   // 所要時間
   const hubs = model.G.hubs.map((hid, i) => `<div><div class="k">${esc(HUB_NAMES[i])}</div><div class="v">${s.t[i] == null ? '—' : `${s.t[i]}<small>分</small>`}</div></div>`).join('');
   const com = model.commute ? `<p class="note"><b>${esc(model.S[model.commute.sid].n)}</b>まで 約<b>${Math.round(model.commute.t[s.i])}</b>分（設定中の勤務地・通学先）</p>` : '';
@@ -108,7 +112,7 @@ export function stationDetail(model, s, st, R) {
     <div><div class="k">刑法犯/千人</div><div class="v">${m.cr == null ? '—' : f1(m.cr)}<small>件</small></div></div>
     <div><div class="k">待機児童</div><div class="v">${m.wc == null ? '—' : fint(m.wc)}<small>人</small></div></div>
     <div><div class="k">昼夜間人口比</div><div class="v">${m.dn == null ? '—' : f1(m.dn)}<small>%</small></div></div></div>
-    <p class="note">いずれも${esc(m.n)}全体の値です。一人暮らし世帯と昼夜間人口比は2020年国勢調査、年齢構成・外国人は2026年1月の住民基本台帳、刑法犯は${m.cry || 2025}年の警視庁統計、待機児童は2025年4月時点。</p>`;
+    <p class="note">いずれも${esc(m.n)}全体の値です。一人暮らし世帯と昼夜間人口比は2020年国勢調査、${REGION.ageSrc || ''}年齢構成・外国人は2026年1月の住民基本台帳、刑法犯は${m.cry || 2025}年の${REGION.crimeSrc}の統計、待機児童は2025年4月時点。</p>`;
   const feats = (m.ft && m.ft.length) ? `<ul class="feat">${m.ft.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : '';
   // 調査ランキング
   const svs = s.sv.length ? `<div class="badges">${s.sv.map(([i, r]) => { const sv = model.surveys[i]; return `<div class="badge"><span class="br num">${r}<small style="font-size:11px">位</small></span><span class="bt">${esc(sv.title)}<small>${esc(sv.cat)}（${esc(sv.pub)}公表）</small></span></div>`; }).join('')}</div>`
@@ -127,8 +131,8 @@ export function stationDetail(model, s, st, R) {
       <section class="sec"><h3>この駅のまとめ</h3><p class="summary">${summaryText(model, s)}</p></section>
       <section class="sec"><h3>総合スコア（${esc(persona)}）</h3>
         <div class="score"><div class="big num">${Math.round(total)}<small>点</small></div>
-        <div class="rk">東京圏 <b>${gr}</b>位 / ${nT}駅<br>${esc(m.n)}内 <b>${mr}</b>位 / ${mn}駅</div></div></section>
-      <section class="sec"><h3>視点別の順位（東京圏${nT}駅中）</h3><div class="lensrank">${lensRows}</div>
+        <div class="rk">${REGION.name} <b>${gr}</b>位 / ${nT}駅<br>${esc(m.n)}内 <b>${mr}</b>位 / ${mn}駅</div></div></section>
+      <section class="sec"><h3>視点別の順位（${REGION.name}${nT}駅中）</h3><div class="lensrank">${lensRows}</div>
         <p class="note">順位をクリックすると、その視点で地図とランキングを切り替えます。</p></section>
       <section class="sec"><h3>家賃相場</h3>${rent}</section>
       <section class="sec"><h3>主要駅までの時間</h3><div class="tl">${hubs}</div>${com}
@@ -148,7 +152,7 @@ export function stationDetail(model, s, st, R) {
         <div><div class="k">幹線道路まで</div><div class="v">${s.road >= 3000 ? '3km超' : fint(s.road)}<small>${s.road >= 3000 ? '' : 'm'}</small></div></div></div>
         <div class="flag ${band.cls}">${ICON[band.cls]}<span>${esc(band.text)}</span></div>${k5}${q5}
         <p class="note">標高は国土地理院の数値標高モデルから。物件の場所ごとの浸水想定は<a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>で確認できます。</p></section>
-      <section class="sec"><h3>通勤ラッシュの混雑率（2024年度）</h3>${cong}</section>
+      ${Object.keys(model.meta.cong || {}).length ? `<section class="sec"><h3>通勤ラッシュの混雑率（2024年度）</h3>${cong}</section>` : ''}
       <section class="sec"><h3>${esc(m.n)}に住む人</h3>${people}${feats ? `<h3 style="margin-top:14px">${esc(m.n)}の特色</h3>${feats}` : ''}${m.chr ? `<p class="note">${esc(m.chr)}</p>` : ''}</section>
       <section class="sec"><h3>有名ランキングでの評価</h3>${svs}</section>
       ${sameHtml ? `<section class="sec"><h3>${esc(m.n)}の総合上位</h3><div class="minilist">${sameHtml}</div></section>` : ''}
@@ -164,7 +168,7 @@ export function muniDetail(model, m, st) {
   const list = m.stations.map(s => [s, model.total(s, w)]).sort((a, b) => b[1] - a[1]);
   const rows = list.map(([s, v], k) => `<button data-sid="${s.i}"><span class="mr">${k + 1}</span>${ruby(s.label, s.y)}<span style="margin-left:6px">${dots(model, s, 4)}</span><span class="ms">${Math.round(v)}</span></button>`).join('');
   const mr = model.meta.surveys;
-  const ranks = (m.mr || []).map(([id, r]) => `<div class="badge"><span class="br num">${r}<small style="font-size:11px">位</small></span><span class="bt">${id.includes('suumo') ? 'SUUMO 住みたい自治体ランキング2026 首都圏版' : 'いい部屋ネット 住みここち（自治体）ランキング2026 首都圏版'}</span></div>`).join('');
+  const ranks = (m.mr || []).map(([id, r]) => `<div class="badge"><span class="br num">${r}<small style="font-size:11px">位</small></span><span class="bt">${id.includes('suumo') ? `SUUMO 住みたい自治体ランキング2026 ${REGION.edition}` : `いい部屋ネット 住みここち（自治体）ランキング2026 ${REGION.edition}`}</span></div>`).join('');
   return `<div class="d-head">
       <button class="d-close" data-close="detail" aria-label="閉じる">${ICON.close}</button>
       <div class="d-eyebrow">${REG_NAME[m.reg] || ''}</div>
@@ -219,13 +223,13 @@ export function board(model, st, R, opt) {
     <div class="persona" data-persona-board>${PERSONAS.map(p => `<button class="pill" data-persona="${p.id}" aria-pressed="${st.persona === p.id}">${esc(p.label)}</button>`).join('')}<button class="pill" data-persona="custom" aria-pressed="${st.persona === 'custom'}">カスタム</button></div>
     <div class="weights">${weights}</div>
     <h3>全駅の一覧（${inScope.length}駅）</h3>
-    <p class="lead" style="font-size:12.5px">各列の値と、東京圏（1都3県）でのパーセンタイル（100に近いほど良い）を並べています。見出しを押すと並び替えます。</p>
+    <p class="lead" style="font-size:12.5px">各列の値と、${REGION.nameLong}でのパーセンタイル（100に近いほど良い）を並べています。見出しを押すと並び替えます。</p>
     ${table}`;
 }
 export function scopeLabel(model, st) {
   const parts = [];
   if (st.mu != null) parts.push(model.M[st.mu].n);
-  else parts.push(st.area === 'all' ? '東京圏' : REG_NAME[st.area]);
+  else parts.push(st.area === 'all' ? REGION.name : REG_NAME[st.area]);
   if (st.line != null) parts.push(model.L[st.line].s + '沿線');
   return parts.join('・');
 }
@@ -245,7 +249,7 @@ export function compareSheet(model, st) {
   const table = `<div class="tablewrap" style="max-height:none"><table class="rt" style="min-width:520px"><thead><tr><th class="l">項目</th>${ss.map((s, j) => `<th class="l"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colors[j]};margin-right:6px"></span>${esc(s.n)}</th>`).join('')}</tr></thead>
     <tbody>${rowsDef.map(([n, fn]) => `<tr style="cursor:default"><td class="l">${esc(n)}</td>${ss.map(s => `<td class="l">${esc(fn(s))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   return `<button class="ibtn sheet-close" data-close="cmp" aria-label="閉じる">${ICON.close}</button>
-    <h2>駅をくらべる</h2><p class="lead">11の視点のパーセンタイル（東京圏${model.T.length}駅中、100に近いほど良い）を重ねています。</p>
+    <h2>駅をくらべる</h2><p class="lead">11の視点のパーセンタイル（${REGION.name}${model.T.length}駅中、100に近いほど良い）を重ねています。</p>
     <div class="legend-row" style="margin-top:14px">${ss.map((s, j) => `<span><i style="background:${colors[j]}"></i>${esc(s.n)}</span>`).join('')}</div>
     <div class="radar-wrap"><svg class="radar" viewBox="0 0 420 400" role="img" aria-label="視点別スコアのレーダーチャート">${grid}${axes}${polys}</svg>${table}</div>`;
 }
@@ -260,7 +264,7 @@ export function guideSheet(g) {
   const mc = g.moving_cost;
   return `<button class="ibtn sheet-close" data-close="guide" aria-label="閉じる">${ICON.close}</button>
     <h2>引っ越しガイド</h2>
-    <p class="lead">東京圏（東京・神奈川・埼玉・千葉）へ引っ越すときの手続き・お金・時期を、公的機関の案内を中心にまとめました。期限は法令や各機関の案内に基づきます。最新の情報は各窓口で確認してください。</p>
+    <p class="lead">${esc(REGION.guideLead)}</p>
     <div class="cols" style="margin-top:22px">
       <div><h3 style="margin-top:0">手続きの流れ</h3><div class="steps">${steps}</div></div>
       <div>
@@ -301,7 +305,7 @@ export function aboutSheet(model) {
   const method = LENSES.filter(l => l.key !== 'total').map(l => `<div><h5>${esc(l.title)}</h5><p>${esc(l.desc)}</p></div>`).join('');
   return `<button class="ibtn sheet-close" data-close="about" aria-label="閉じる">${ICON.close}</button>
     <h2>データと計算方法</h2>
-    <p class="lead">この図鑑は、公的な統計・オープンデータと主要な住まいランキングを組み合わせ、東京圏の${model.T.length}駅を同じ物差しで比べられるようにしたものです。対象は東京都（島しょ部を除く）の全駅と、神奈川・埼玉・千葉のうち都心の主要6駅（東京・大手町・新宿・渋谷・池袋・品川）のどれかまで60分以内で行ける駅です。スコアは各指標を都内全駅の中でのパーセンタイル（0〜100、良いほど高い）に直した値で、総合スコアは選んだ暮らし方の重みで平均しています。</p>
+    <p class="lead">この図鑑は、公的な統計・オープンデータと主要な住まいランキングを組み合わせ、${REGION.name}の${model.T.length}駅を同じ物差しで比べられるようにしたものです。${REGION.scopeText}スコアは各指標を${REGION.pctBase}の中でのパーセンタイル（0〜100、良いほど高い）に直した値で、総合スコアは選んだ暮らし方の重みで平均しています。</p>
     <h3>各視点の作り方</h3><div class="method">${method}</div>
     <h3>所要時間の計算</h3>
     <p class="lead" style="font-size:13px">国土数値情報の線路形状から駅間の距離を測り、路線の種類ごとの平均速度と停車時間で乗車時間を見積もっています。乗り換えは1回5分、直通運転の駅は30秒、急行・快速への乗り換えは1.5分、500m以内の別駅への徒歩は距離に応じて加算しています。待ち時間は含みません。実際の所要時間は時間帯やダイヤで変わります。</p>
@@ -312,13 +316,11 @@ export function aboutSheet(model) {
       <li>国土交通省 国土数値情報「行政区域（2025年）」「鉄道（2024年）」「駅別乗降客数（2023年度）」（CC BY 4.0）</li>
       <li>国土地理院「標高タイル（数値標高モデル）」</li>
       <li>© OpenStreetMap contributors（ODbL）: 駅名のよみ、公園・水面・河川・道路、生活施設</li>
-      <li>警視庁「区市町村の町丁別、罪種別及び手口別認知件数」、神奈川県警察・埼玉県警察・千葉県警察の市区町村別の刑法犯認知件数（いずれも${esc(String(model.M[0].cry || 2025))}年）</li>
-      <li>東京都「住民基本台帳による世帯と人口」（2026年1月）、総務省「住民基本台帳に基づく人口、人口動態及び世帯数」（2026年1月1日）、神奈川県・埼玉県・千葉県の人口統計、総務省「令和2年国勢調査」</li>
-      <li>東京都・神奈川県・埼玉県・千葉県と各市の待機児童数（2025年4月1日）、各区市町村の公式サイト（特色）</li>
-      <li><a href="${esc(m.cong_src.url)}" target="_blank" rel="noopener">${esc(m.cong_src.src)}</a>（${esc(String(m.cong_src.fy))}年度）</li>
-      <li><a href="${esc(m.quake_src.url)}" target="_blank" rel="noopener">東京都「${esc(m.quake_src.survey)}」</a>（${esc(m.quake_src.pub)}、東京都内のみ）</li>
-      <li><a href="${esc(m.koto5.url)}" target="_blank" rel="noopener">${esc(m.koto5.plan_name)}</a>（${esc(m.koto5.published)}）</li>
-      <li>SUUMO 路線別の家賃相場（${esc(m.rent_date)}取得）${m.ward_rent_src?.name ? `、${esc(m.ward_rent_src.name)}` : ''}、LIFULL HOME'S 市区町村別の家賃相場</li>
+      ${REGION.sources(m, String(model.M[0].cry || 2025)).map(t => `<li>${esc(t)}</li>`).join('')}
+      ${m.cong_src ? `<li><a href="${esc(m.cong_src.url)}" target="_blank" rel="noopener">${esc(m.cong_src.src)}</a>（${esc(String(m.cong_src.fy))}年度）</li>` : ''}
+      ${m.quake_src ? `<li><a href="${esc(m.quake_src.url)}" target="_blank" rel="noopener">東京都「${esc(m.quake_src.survey)}」</a>（${esc(m.quake_src.pub)}、東京都内のみ）</li>` : ''}
+      ${m.koto5 ? `<li><a href="${esc(m.koto5.url)}" target="_blank" rel="noopener">${esc(m.koto5.plan_name)}</a>（${esc(m.koto5.published)}）</li>` : ''}
+      <li>SUUMO 路線別の家賃相場（${esc(m.rent_date)}取得）${m.ward_rent_src?.name ? `、${esc(m.ward_rent_src.name)}` : ''}${esc(REGION.rentSrcExtra)}</li>
       ${sv}
     </ul>
     <p class="note" style="margin-top:14px">スコアと推計値は物件探しの入り口として使うための目安です。実際の家賃・治安・災害リスクは物件の場所や条件で大きく変わります。契約前に現地と公式情報で確認してください。</p>`;
