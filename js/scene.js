@@ -89,9 +89,12 @@ export class MapScene {
     this.dirty = true; this.anim = null; this.mode = 'station'; this.elevOn = false;
     this.promo = /[?&]promo/.test(location.search);   // 動画の撮影用（1コマずつ描く）
     const r = this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: this.promo });
-    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    // スマホは画素数を抑え、撮影時は従来の解像度を保つ。
+    this.pixelRatioCap = !this.promo && matchMedia('(pointer: coarse)').matches ? 1.5 : 2;
+    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.pixelRatioCap));
     r.setSize(el.clientWidth, el.clientHeight, false);
     r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
+    r.shadowMap.autoUpdate = false;
     el.appendChild(r.domElement);
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(34, el.clientWidth / Math.max(1, el.clientHeight), 1, 6000);
@@ -840,7 +843,7 @@ void main(){
   loop(now) {
     if (this.manual) return;   // 撮影中は step() を外から呼ぶ
     requestAnimationFrame(this.loop);
-    this.step(now);
+    if (!document.hidden) this.step(now);
   }
   // 1コマ分の更新と描画（撮影モードでは外部から時刻を渡して呼ぶ）
   step(now) {
@@ -859,6 +862,15 @@ void main(){
     }
     const moved = this.controls.update();
     const cam = this.camera, dist = cam.position.distanceTo(this.controls.target);
+    // 選択リングだけの点滅では、柱・駅名・影の再計算やGPU転送を行わない。
+    if (!this.manual && !this.dirty && !moved && !this.anim && !this.inertia && !this.transitioning) {
+      if (this.sel != null && this.opts?.mode !== 'muni' && now - (this.lastRingFrame || 0) >= 1000 / 30) {
+        this.updateSelectionRing(now, this.lastRadius);
+        this.renderer.render(this.scene, cam);
+        this.lastRingFrame = now;
+      }
+      return;
+    }
     // 柱のアニメーション
     let animating = false;
     const n = this.st.length;
@@ -906,12 +918,8 @@ void main(){
       const k = this.opts?.mode === 'muni' ? Math.min(1.15, Math.max(0.6, dist / 560)) : Math.min(1, Math.max(0.3, dist / 260));
       if (L.baseScale) L.mesh.scale.set(L.tex.image.width * L.baseScale * k, 1, L.tex.image.height * L.baseScale * k);
     }
-    // 選択リング
-    if (this.sel != null) {
-      const s = this.st[this.sel]; const rr = rad * 2.6 * (1 + 0.08 * Math.sin(now / 260));
-      this.ring.visible = this.opts?.mode !== 'muni'; this.ring.position.set(s.x / U, DOT_Y + 0.01, s.z / U); this.ring.scale.set(rr, 1, rr);
-      animating = true;
-    } else this.ring.visible = false;
+    this.lastRadius = rad;
+    this.updateSelectionRing(now, rad);
     // カメラの近・遠クリップと霧、影
     cam.near = Math.max(0.4, dist / 70); cam.far = dist * 14 + 900; cam.updateProjectionMatrix();
     this.scene.fog.near = dist * 1.25 + 120; this.scene.fog.far = dist * 3.4 + 700;
@@ -919,12 +927,24 @@ void main(){
     const sd = Math.min(700, Math.max(40, dist * 0.95));
     this.sun.position.set(t.x - sd * 0.55, sd * 1.25, t.z + sd * 0.45); this.sun.target.position.copy(t);
     const sc2 = this.sun.shadow.camera; sc2.left = -sd; sc2.right = sd; sc2.top = sd; sc2.bottom = -sd; sc2.near = sd * 0.2; sc2.far = sd * 4; sc2.updateProjectionMatrix();
+    this.renderer.shadowMap.needsUpdate = true;
     this.renderer.render(this.scene, cam);
+    this.lastRingFrame = now;
     this.updateLabels(dist);
     // 方角（コンパス用）: 画面の上方向に対する北の向き
     const off = cam.position.clone().sub(t); const az = Math.atan2(off.x, off.z);
     if (this.lastAz === undefined || Math.abs(az - this.lastAz) > 0.002) { this.lastAz = az; this.cb.bearing?.(az); }
+    this.transitioning = animating;
     this.dirty = animating;
+  }
+
+  updateSelectionRing(now, rad) {
+    this.ring.visible = this.sel != null && this.opts?.mode !== 'muni';
+    if (!this.ring.visible) return;
+    const s = this.st[this.sel];
+    const rr = rad * 2.6 * (1 + 0.08 * Math.sin(now / 260));
+    this.ring.position.set(s.x / U, DOT_Y + 0.01, s.z / U);
+    this.ring.scale.set(rr, 1, rr);
   }
 
   updateLabels(dist) {
